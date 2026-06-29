@@ -1,0 +1,22 @@
+---
+description: Security, privacy, money, ledger integrity, and AI safety requirements
+alwaysApply: true
+---
+
+# Security and financial correctness
+
+- Treat financial data as sensitive.
+- Never log access tokens, refresh tokens, passwords, secrets, bank identifiers, complete account numbers, raw imported statements, or unredacted user payloads.
+- Use least privilege for IAM, database accounts, network rules, and application permissions.
+- Validate authentication and authorization at the service boundary.
+- Do not trust client-supplied user IDs, roles, balances, totals, or ownership fields.
+- Use parameterized queries and safe serialization.
+- Use `BigDecimal` in Java, integer minor units or a decimal library in Go, and `Decimal` in Python for money.
+- Never use `float` or `double` for monetary calculations.
+- Require explicit currency and define rounding rules.
+- Ledger writes must be atomic, auditable, and idempotent.
+- Prefer immutable financial entries plus compensating/reversal entries over destructive edits.
+- AI-generated categorization or advice must be marked with confidence/provenance and must never directly alter balances.
+- AI output is informational, not guaranteed financial advice.
+- Apply rate limits, input-size limits, timeouts, and bounded retries to external APIs.
+- Secrets belong in environment variables, AWS Secrets Manager, or SSM Parameter Store, never committed files.

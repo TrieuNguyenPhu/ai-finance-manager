@@ -1,0 +1,1 @@
+Create a concise implementation plan for the user's request. Inspect relevant repository files first. Do not edit code. Include acceptance criteria, files likely to change, tests, risks, and rollback considerations.

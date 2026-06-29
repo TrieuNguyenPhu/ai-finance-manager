@@ -1,0 +1,24 @@
+---
+description: Python, FastAPI, and AI service conventions
+globs:
+  - "**/*.py"
+  - "**/pyproject.toml"
+  - "**/requirements*.txt"
+alwaysApply: false
+---
+
+# Python / FastAPI / AI
+
+- Follow the repository Python version and dependency manager.
+- Add type hints to public functions and service boundaries.
+- Use Pydantic models for API input/output validation.
+- Keep route handlers thin and isolate model/provider integrations behind interfaces.
+- Use `Decimal` for money.
+- Never deserialize untrusted data with unsafe pickle-like mechanisms.
+- Set explicit timeouts, retries with backoff, and response-size limits for AI providers.
+- Validate structured model output before using it.
+- Prompts must not contain secrets or unnecessary personal financial data.
+- Defend against prompt injection when external/user content is passed to tools or retrieval.
+- Deterministic financial calculations must remain outside the LLM.
+- Tests must mock provider boundaries and cover malformed/partial provider responses.
+- Prefer `ruff`, `mypy`, and `pytest` when configured.

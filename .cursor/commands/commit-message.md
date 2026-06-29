@@ -1,0 +1,1 @@
+Generate one Conventional Commit message for the current diff. Use the actual changed behavior. Include a concise body only when it explains a non-obvious decision or migration impact. Do not claim tests passed unless verified.

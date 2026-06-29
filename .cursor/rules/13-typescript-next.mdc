@@ -1,0 +1,22 @@
+---
+description: TypeScript, React, and Next.js conventions
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/package.json"
+  - "**/next.config.*"
+alwaysApply: false
+---
+
+# TypeScript / Next.js
+
+- Keep TypeScript strict; do not introduce `any` to bypass errors.
+- Validate external data at runtime.
+- Prefer Server Components by default and Client Components only when interactivity/browser APIs require them.
+- Keep secrets and privileged calls server-side.
+- Do not trust hidden UI state for authorization.
+- Represent money in integer minor units or validated decimal strings; format only at the presentation layer.
+- Handle loading, empty, error, and retry states.
+- Preserve accessibility: semantic elements, labels, keyboard use, focus, and contrast.
+- Avoid unnecessary global state and premature memoization.
+- Add focused tests for business-critical UI logic.

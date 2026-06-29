@@ -1,0 +1,23 @@
+---
+description: HTTP APIs, OpenAPI contracts, and asynchronous event conventions
+globs:
+  - "**/*openapi*.yaml"
+  - "**/*openapi*.yml"
+  - "**/api/**"
+  - "**/events/**"
+  - "**/*event*.*"
+alwaysApply: false
+---
+
+# APIs and events
+
+- Preserve backward compatibility unless a breaking change is explicitly approved.
+- Use stable machine-readable error codes.
+- Pagination must have bounded page size.
+- Mutating operations that may be retried should support idempotency.
+- Do not expose internal stack traces or implementation details.
+- Update OpenAPI/examples/tests together with behavior.
+- Version events and use additive evolution.
+- Consumers must be idempotent and tolerate duplicate delivery.
+- Use dead-letter handling and observable retry behavior.
+- Never put secrets or unnecessary sensitive data in events.

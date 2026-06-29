@@ -1,0 +1,21 @@
+---
+description: SQL, migrations, and persistence conventions
+globs:
+  - "**/*.sql"
+  - "**/migrations/**"
+  - "**/db/**"
+alwaysApply: false
+---
+
+# Database
+
+- Every schema change must use a versioned migration.
+- Prefer backward-compatible expand/migrate/contract changes.
+- Do not edit already-applied migrations unless the project explicitly permits it.
+- Add constraints for invariants that must hold regardless of application code.
+- Index based on real query patterns; explain non-obvious indexes.
+- Avoid unbounded reads and N+1 queries.
+- Use transactions for multi-step consistency.
+- Store money using an agreed exact numeric representation and include currency.
+- Store timestamps in UTC.
+- For destructive or large-table changes, document rollback and deployment sequencing.
