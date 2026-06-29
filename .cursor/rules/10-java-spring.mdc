@@ -10,16 +10,12 @@ alwaysApply: false
 
 # Java / Spring Boot
 
-- Follow the repository's Java version and build tool.
-- Prefer constructor injection.
-- Keep controllers thin; place business rules in application/domain services.
-- Do not expose persistence entities directly through APIs.
-- Use records for immutable DTOs when supported.
-- Validate request DTOs at boundaries and domain invariants in the domain layer.
-- Use `BigDecimal` for money and make rounding mode explicit.
-- Map expected failures to stable problem details/error codes.
-- Transactions must be explicit around consistency boundaries.
-- Avoid broad `catch (Exception)` and never swallow exceptions.
-- Add unit tests for domain logic and focused integration tests for persistence/API behavior.
-- Prefer Testcontainers for real database integration where already adopted.
-- Avoid adding Lombok unless already standardized by the repository.
+- Services: `services/identity-service`, `services/transaction-service`.
+- Prefer **Java 25 LTS** and **Spring Boot 4.1.x**.
+- Package root: `com.aifinancemanager.*`.
+- Constructor injection; thin controllers; domain rules in application/domain layers.
+- Do not expose JPA entities as API models.
+- Money: long/BigDecimal minor units — never float/double.
+- Explicit transactions; transactional outbox for events; prefer reversal over hard delete.
+- AWS target: Lambda + SnapStart (+ Spring Cloud Function adapter when wired).
+- Prefer Testcontainers where adopted; avoid Lombok unless standardized.

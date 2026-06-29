@@ -1,40 +1,29 @@
 # Canonical Commands
 
-Cursor must discover the actual commands from repository files before running them. Prefer these conventions when the project adopts them.
-
 ## Root
-- `make help`
-- `make lint`
-- `make test`
-- `make verify`
-- `docker compose up -d`
+- See `README.md` for run order (gateway-service first, then web).
 
-## Java
-- `./mvnw test`
-- `./mvnw verify`
-- or `./gradlew test`
+## Web (`apps/web`)
+- `pnpm install` / `pnpm dev` / `pnpm lint` / `pnpm typecheck` / `pnpm build`
 
-## Go
+## gateway-service
+- `uv sync --extra dev`
+- `uv run uvicorn gateway.main:app --reload --app-dir src --host 127.0.0.1 --port 8000`
+- `uv run pytest`
+
+## ai-service
+- `uv sync --extra dev`
+- `uv run uvicorn ai.main:app --reload --app-dir src --host 127.0.0.1 --port 8001`
+- `uv run pytest`
+
+## identity-service / transaction-service
+- `mvn test`
+- `mvn spring-boot:run` — ports **8080** / **8081**
+
+## budget-service / analytics-service
 - `go test ./...`
-- `go vet ./...`
-- `golangci-lint run`
+- `go run ./cmd/server` — ports **8082** / **8083**
 
-## Python
-- `uv sync`
-- `ruff check .`
-- `ruff format --check .`
-- `mypy .`
-- `pytest`
-
-## Frontend
-- `pnpm install --frozen-lockfile`
-- `pnpm lint`
-- `pnpm typecheck`
-- `pnpm test`
-- `pnpm build`
-
-## Terraform
-- `terraform fmt -check -recursive`
-- `terraform validate`
-- `tflint --recursive`
-- `checkov -d .`
+## notification-service
+- `go test ./...`
+- `go run ./cmd/worker`

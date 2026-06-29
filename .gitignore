@@ -1,0 +1,84 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/secrets/**
+**/*secret*.json
+**/*credentials*.json
+.aws/
+
+# Local toolchains (never commit)
+.tools/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+site-packages/
+
+# Build / generated
+.next/
+out/
+dist/
+build/
+target/
+coverage/
+*.tsbuildinfo
+
+# Go (if added later)
+bin/
+*.exe
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Java / JVM (if added later)
+.gradle/
+*.class
+*.jar
+*.war
+*.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Misc local
+tmp/
+temp/
+uploads/
+data/raw/
+*.sqlite
+*.db
+*.csv
+*.parquet
+*.zip
+*.tar
+*.gz
+.mailpit/
