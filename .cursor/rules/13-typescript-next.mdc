@@ -10,13 +10,9 @@ alwaysApply: false
 
 # TypeScript / Next.js
 
-- Keep TypeScript strict; do not introduce `any` to bypass errors.
-- Validate external data at runtime.
-- Prefer Server Components by default and Client Components only when interactivity/browser APIs require them.
-- Keep secrets and privileged calls server-side.
-- Do not trust hidden UI state for authorization.
-- Represent money in integer minor units or validated decimal strings; format only at the presentation layer.
-- Handle loading, empty, error, and retry states.
-- Preserve accessibility: semantic elements, labels, keyboard use, focus, and contrast.
-- Avoid unnecessary global state and premature memoization.
-- Add focused tests for business-critical UI logic.
+- `apps/web` on **Next.js 16** + React 19. Node **22+** (prefer 24 LTS). Prefer `pnpm`.
+- Call **only** `services/gateway-service` (`NEXT_PUBLIC_API_BASE_URL`).
+- Product display name: **ai-finance-manager**.
+- TypeScript **5.9.x** (stay on 5.x until Next/ESLint adopt TS 7 broadly).
+- Strict TS; SC by default; secrets server-side; confirm-before-save for AI drafts.
+- Money as integer minor units at boundaries; a11y required.

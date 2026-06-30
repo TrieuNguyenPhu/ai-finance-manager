@@ -9,13 +9,9 @@ alwaysApply: false
 
 # Go
 
-- Follow effective Go and existing package boundaries.
-- Pass `context.Context` through request and I/O paths.
-- Wrap errors with useful context; preserve error identity where callers use `errors.Is/As`.
-- Keep interfaces small and define them near consumers.
-- Avoid package-level mutable state.
-- Close resources and handle returned errors.
-- Use bounded timeouts and cancellation for network/database calls.
-- Do not represent money as `float32` or `float64`; use integer minor units or the approved decimal type.
-- Use table-driven tests where they improve clarity.
-- Run formatting and targeted tests for changed packages.
+- Services: `budget-service`, `analytics-service`, `notification-service`.
+- Prefer **Go 1.26+**. Module path: `github.com/ai-finance-manager/<service>`.
+- `cmd/` + `internal/`; pass `context.Context`; wrap errors.
+- Money: `int64` minor units — never float.
+- SQS consumers must be idempotent.
+- `go test ./...` for changed packages.
