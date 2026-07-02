@@ -1,0 +1,66 @@
+# Local secrets and env
+.env
+.env.*
+!.env.example
+
+# Local toolchains (portable JDKs, etc.)
+.tools/
+
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+build/
+out/
+target/
+coverage/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.turbo/
+*.tsbuildinfo
+.pnpm-store/
+
+# Java / IDE
+.idea/
+.vscode/
+*.iml
+*.class
+*.jar
+*.war
+*.log
+.classpath
+.project
+.settings/
+
+# Go
+**/bin/
+!**/bin/.gitkeep
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data / uploads
+data/raw/
+uploads/
+tmp/
+temp/
+*.sqlite
+*.db
