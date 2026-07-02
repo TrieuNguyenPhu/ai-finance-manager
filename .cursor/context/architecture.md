@@ -3,26 +3,27 @@
 ## Core principles
 - The ledger is the source of truth for balances.
 - AI never directly mutates the ledger.
-- Each service owns its database and schema.
+- Each module/service owns its schema; start with one Postgres instance and separate schemas.
 - Cross-service communication uses versioned APIs or events, not direct database access.
 - Prefer idempotent commands and consumers.
 - Every monetary amount includes currency.
 - Store timestamps in UTC; convert only at system boundaries.
 - Propagate correlation/trace IDs across HTTP and asynchronous messages.
 
-## Suggested services
-1. `gateway-service` — Go
-2. `identity-service` — Java/Spring Boot or AWS Cognito integration
-3. `ledger-service` — Java/Spring Boot
-4. `budget-service` — Java/Spring Boot
-5. `notification-service` — Go
-6. `ai-insight-service` — Python/FastAPI
-7. `web-app` — Next.js/TypeScript
+## Initial deployables
+1. `apps/web` — Next.js/TypeScript
+2. `services/finance-core` — Java/Spring Boot modular service (accounts, ledger, budget later)
+3. `services/gateway` — Go (thin gateway scaffold; BFF features deferred)
+4. `services/ai-insight` — Python/FastAPI (insights later; read-only w.r.t. ledger)
 
-Start with fewer deployable services when possible. A modular monolith is acceptable for tightly coupled early-stage domains; extraction must be driven by independent scaling, ownership, or release needs.
+Identity for production: prefer AWS Cognito (not implemented yet).
+
+Local schemas: `finance_core`, `ai_insight` (see `infra/docker/postgres/init/01-schemas.sql`).
+
+See `docs/adr/0001-initial-deployable-boundaries.md`.
 
 ## Data and API rules
-- API contracts: OpenAPI 3.x.
+- API contracts: OpenAPI 3.x (not yet published).
 - Events must include: `eventId`, `eventType`, `eventVersion`, `occurredAt`, `correlationId`, and payload.
 - Use additive schema evolution by default.
 - Never reuse an event name for incompatible semantics.
