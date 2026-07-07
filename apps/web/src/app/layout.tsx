@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeScript } from "@/components/theme/theme-script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ai-finance-manager",
+  title: {
+    default: "ai-finance-manager",
+    template: "%s · ai-finance-manager",
+  },
   description: "Personal finance website with AI-assisted transaction drafts.",
 };
 
@@ -23,7 +27,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
