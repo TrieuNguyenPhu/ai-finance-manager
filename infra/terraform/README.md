@@ -1,19 +1,9 @@
-# Terraform
+# Terraform (aws)
 
-Infrastructure skeleton only. **No production AWS resources are defined or applied yet.**
+Modules under `modules/`:
 
-## Layout
+- `cognito` — user pool + public web client
+- `rds` — single-AZ Postgres 16 (`db.t4g.micro`)
+- `lambda_placeholder` — Java SnapStart-capable Lambda scaffold
 
-- `envs/dev` — eventual development environment root
-- `modules/` — reusable modules (empty until needed)
-
-## Local checks (when modules exist)
-
-```bash
-cd infra/terraform/envs/dev
-terraform init -backend=false
-terraform fmt -check -recursive
-terraform validate
-```
-
-Do not apply against a real AWS account until modules and a review are ready.
+`envs/dev` keeps module wiring commented until VPC, secrets, and cost review are ready. Local development uses Compose Postgres only — do not apply AWS resources before local ledger acceptance.
