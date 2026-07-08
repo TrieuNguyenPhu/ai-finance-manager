@@ -29,8 +29,13 @@ Health: `GET http://127.0.0.1:8000/health`
 
 ## Edge protections
 
-- JWT (HS256 local stub) with `exp`/`iat` required; dev tokens via `POST /api/v1/auth/dev-token` when `AUTH_DEV_MODE=true`.
+- JWT validation requires `exp`/`iat`/`sub`. Local HS256 tokens exist only when
+  `AUTH_DEV_MODE=true`. Otherwise the gateway requires both `COGNITO_ISSUER` and
+  `COGNITO_CLIENT_ID`, verifies Cognito access-token RS256 signatures through
+  the cached JWKS, and checks `token_use=access` plus the app-client ID. Missing
+  authentication configuration fails closed.
 - Security headers, per-IP rate limit (`RATE_LIMIT_PER_MINUTE`), request-size limit (`MAX_REQUEST_BODY_BYTES`).
+- Shared Redis rate-limit buckets when `REDIS_URL` is configured; local in-process fallback if Redis is unavailable.
 - Shared pooled HTTP client with timeouts; upstream errors return generic 502.
 
 ## Upstream ports (local)
@@ -43,3 +48,6 @@ Health: `GET http://127.0.0.1:8000/health`
 | analytics-service | http://127.0.0.1:8083 |
 | notification-service | http://127.0.0.1:8084 |
 | ai-service | http://127.0.0.1:8001 |
+
+List endpoints accept `limit=1..100` and default to `50` to keep response and
+database work bounded.

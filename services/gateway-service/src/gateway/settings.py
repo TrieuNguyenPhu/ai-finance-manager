@@ -14,11 +14,14 @@ class Settings(BaseSettings):
     analytics_base_url: str = "http://127.0.0.1:8083"
     ai_base_url: str = "http://127.0.0.1:8001"
     notification_base_url: str = "http://127.0.0.1:8084"
+    redis_url: str | None = None
 
-    auth_dev_mode: bool = True
-    auth_jwt_secret: str = "local-dev-only-change-me-32chars!!"
+    auth_dev_mode: bool = False
+    auth_jwt_secret: str = ""
     auth_jwt_issuer: str = "ai-finance-manager-local"
     auth_token_ttl_seconds: int = 8 * 60 * 60
+    cognito_issuer: str | None = None
+    cognito_client_id: str | None = None
 
     # Simple per-client-IP throttle (requests per minute). Protects local stack
     # and gives a sane default before real infra-level rate limiting exists.
