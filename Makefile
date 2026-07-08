@@ -1,7 +1,8 @@
 # Repository orchestration. Prefer these targets over ad-hoc commands.
 .PHONY: help up down build lint test verify \
 	test-gateway-service test-ai-service test-budget-service test-analytics-service \
-	test-notification-service build-web lint-web test-web lint-terraform
+	test-notification-service test-identity-service test-transaction-service \
+	build-web lint-web test-web lint-terraform
 
 ROOT := $(CURDIR)/
 COMPOSE := docker compose -f "$(ROOT)infra/docker-compose.yml" --env-file "$(ROOT).env.example"
@@ -11,7 +12,7 @@ help:
 	@echo ""
 	@echo "  make up       Start local PostgreSQL"
 	@echo "  make down     Stop local dependencies"
-	@echo "  make test     Run available service health tests"
+	@echo "  make test     Run available service tests"
 	@echo "  make build    Build web"
 	@echo "  make verify   test + build"
 
@@ -26,7 +27,8 @@ build: build-web
 
 lint: lint-web
 
-test: test-gateway-service test-ai-service test-budget-service test-analytics-service test-notification-service
+test: test-gateway-service test-ai-service test-budget-service test-analytics-service \
+	test-notification-service test-identity-service test-transaction-service
 
 verify: test build
 	@echo verify: ok
@@ -45,6 +47,12 @@ test-analytics-service:
 
 test-notification-service:
 	cd "$(ROOT)services/notification-service" && go test ./...
+
+test-identity-service:
+	cd "$(ROOT)services/identity-service" && mvn -q test
+
+test-transaction-service:
+	cd "$(ROOT)services/transaction-service" && mvn -q test
 
 build-web:
 	cd "$(ROOT)apps/web" && pnpm install --frozen-lockfile
