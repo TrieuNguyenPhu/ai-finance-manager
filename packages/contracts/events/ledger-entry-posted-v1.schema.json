@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-finance-manager.local/contracts/events/ledger-entry-posted-v1.schema.json",
+  "title": "transaction.ledger_entry.posted payload v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "eventVersion",
+    "eventId",
+    "eventType",
+    "userId",
+    "entryId",
+    "accountId",
+    "categoryId",
+    "categoryName",
+    "entryType",
+    "effectEntryType",
+    "amountMinor",
+    "incomeDeltaMinor",
+    "expenseDeltaMinor",
+    "categorySpendDeltaMinor",
+    "currency",
+    "occurredAt",
+    "effectiveOccurredAt",
+    "yearMonth",
+    "reversesEntryId"
+  ],
+  "properties": {
+    "eventVersion": { "const": 1 },
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "transaction.ledger_entry.posted" },
+    "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "entryId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "format": "uuid" },
+    "categoryId": {
+      "oneOf": [
+        { "type": "string", "format": "uuid" },
+        { "type": "null" }
+      ]
+    },
+    "categoryName": {
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 120 },
+        { "type": "null" }
+      ]
+    },
+    "entryType": {
+      "enum": ["INCOME", "EXPENSE", "TRANSFER", "REVERSAL"]
+    },
+    "effectEntryType": {
+      "enum": ["INCOME", "EXPENSE", "TRANSFER"]
+    },
+    "amountMinor": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "incomeDeltaMinor": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "expenseDeltaMinor": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "categorySpendDeltaMinor": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "effectiveOccurredAt": { "type": "string", "format": "date-time" },
+    "yearMonth": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "reversesEntryId": {
+      "oneOf": [
+        { "type": "string", "format": "uuid" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "categorySpendDeltaMinor": { "not": { "const": 0 } }
+        }
+      },
+      "then": {
+        "properties": {
+          "categoryId": { "type": "string", "format": "uuid" },
+          "categoryName": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "effectEntryType": { "const": "EXPENSE" }
+        }
+      }
+    }
+  ]
+}

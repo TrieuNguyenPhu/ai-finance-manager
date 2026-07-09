@@ -3,6 +3,7 @@ from typing import Any
 
 import httpx
 from fastapi import HTTPException, Response
+from fastapi.responses import JSONResponse
 
 from gateway.settings import settings
 
@@ -18,13 +19,16 @@ class UpstreamClient:
     async def startup(self) -> None:
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(10.0, connect=3.0),
-            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
         )
 
     async def shutdown(self) -> None:
         if self._client is not None:
             await self._client.aclose()
             self._client = None
+
+    def is_started(self) -> bool:
+        return self._client is not None
 
     async def request(
         self,
@@ -71,11 +75,28 @@ class UpstreamClient:
                 detail={"code": "UPSTREAM_UNAVAILABLE", "message": "Upstream service unavailable"},
             ) from exc
 
+        if upstream.status_code >= 500:
+            logger.warning(
+                "Upstream %s %s returned status=%s",
+                method,
+                url,
+                upstream.status_code,
+            )
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "detail": {
+                        "code": "UPSTREAM_UNAVAILABLE",
+                        "message": "Upstream service unavailable",
+                    }
+                },
+            )
+
         content_type = upstream.headers.get("content-type", "application/json")
         return Response(
             content=upstream.content,
             status_code=upstream.status_code,
-            media_type=content_type,
+            media_type=content_type.partition(";")[0],
         )
 
 
