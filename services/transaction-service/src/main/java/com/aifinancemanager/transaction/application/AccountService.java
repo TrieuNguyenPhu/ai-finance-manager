@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,16 +37,17 @@ public class AccountService {
   }
 
   @Transactional(readOnly = true)
-  public List<AccountResponse> list(String userId) {
-    return accountRepository.findByUserIdOrderByCreatedAtAsc(userId).stream()
+  public List<AccountResponse> list(String userId, int limit) {
+    return accountRepository
+        .findByUserIdOrderByCreatedAtAsc(userId, PageRequest.of(0, PageSize.normalize(limit))).stream()
         .map(AccountResponse::from)
         .toList();
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public Account requireOwned(UUID accountId, String userId) {
     return accountRepository
-        .findByIdAndUserId(accountId, userId)
+        .findByIdAndUserIdForUpdate(accountId, userId)
         .orElseThrow(() -> new DomainException("ACCOUNT_NOT_FOUND", "Account not found", 404));
   }
 }
