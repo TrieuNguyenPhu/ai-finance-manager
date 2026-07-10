@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +36,9 @@ public class CategoryService {
   }
 
   @Transactional(readOnly = true)
-  public List<CategoryResponse> list(String userId) {
-    return categoryRepository.findByUserIdOrderByNameAsc(userId).stream()
+  public List<CategoryResponse> list(String userId, int limit) {
+    return categoryRepository
+        .findByUserIdOrderByNameAsc(userId, PageRequest.of(0, PageSize.normalize(limit))).stream()
         .map(CategoryResponse::from)
         .toList();
   }

@@ -1,9 +1,15 @@
 # transaction-service (Java / Spring Boot)
 
 Ledger **source of truth** for ai-finance-manager: accounts, categories, income/expense/transfers.
-Publishes domain events via transactional outbox (SQS later).
+Publishes domain events via a transactional outbox. HTTP fan-out is the default
+local transport; SQS publisher mode is available with `OUTBOX_TRANSPORT=sqs`.
 
 Money: integer minor units + ISO currency. Prefer reversal over destructive delete.
+
+Outbox payloads for `transaction.ledger_entry.posted` follow
+`packages/contracts/events/ledger-entry-posted-v1.schema.json`. Version 1 carries
+canonical signed reporting/category deltas; a reversal emits the exact inverse of
+the original entry in its original effective period.
 
 ## Requirements
 
@@ -22,4 +28,7 @@ Health: `GET http://127.0.0.1:8081/health`
 
 ## AWS
 
-Deploy as Lambda + SnapStart (Spring Cloud Function adapter) per ADR 0004.
+Target: Lambda + SnapStart per ADR 0004. The current servlet application and
+scheduled outbox relays are for local execution; a Lambda request adapter,
+queue-triggered outbox publisher, published artifact, and measured SnapStart
+configuration are still required.
