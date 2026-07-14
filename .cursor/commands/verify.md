@@ -1,0 +1,1 @@
+Inspect the current diff and run the smallest relevant formatting, linting, type-checking, and test commands discovered from repository configuration. Fix only issues caused by the current change. Report each command and outcome truthfully.

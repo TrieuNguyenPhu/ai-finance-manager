@@ -1,0 +1,1 @@
+Review the current diff for correctness, security, financial integrity, compatibility, tests, observability, and AWS cost. Return only actionable findings with severity, file/line, failure scenario, and fix.

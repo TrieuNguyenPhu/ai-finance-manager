@@ -1,0 +1,19 @@
+---
+description: Testing and verification rules
+globs:
+  - "**/*test*.*"
+  - "**/tests/**"
+  - "**/__tests__/**"
+alwaysApply: false
+---
+
+# Testing
+
+- Test observable behavior, invariants, and failure paths.
+- Reproduce a bug with a failing test before fixing when practical.
+- Keep tests deterministic; avoid real external APIs.
+- Use fixed clocks and seeded randomness where relevant.
+- Cover authorization boundaries and cross-user data isolation.
+- For money, test currencies, rounding, zero, negative values where valid, and large values.
+- Do not delete or weaken tests merely to pass the suite.
+- Prefer targeted tests during iteration and broader checks before completion.

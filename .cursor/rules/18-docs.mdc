@@ -1,0 +1,16 @@
+---
+description: Documentation and decision-record conventions
+globs:
+  - "**/*.md"
+  - "**/docs/**"
+  - "**/README*"
+alwaysApply: false
+---
+
+# Documentation
+
+- Keep documentation aligned with actual code and commands.
+- Use concise examples that can be copied safely.
+- Never include real credentials or personal financial information.
+- For architecture decisions, capture context, decision, alternatives, consequences, and status.
+- Update setup instructions when dependencies, environment variables, ports, or workflows change.

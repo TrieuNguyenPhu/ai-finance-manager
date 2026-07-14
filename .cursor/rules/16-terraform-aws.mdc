@@ -1,0 +1,26 @@
+---
+description: Terraform and AWS infrastructure conventions
+globs:
+  - "**/*.tf"
+  - "**/*.tfvars"
+  - "**/Dockerfile*"
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
+alwaysApply: false
+---
+
+# Terraform / AWS / containers
+
+- Optimize the initial architecture for fewer than 100 users and low idle cost.
+- Prefer managed services only when their operational benefit justifies fixed cost.
+- Avoid introducing EKS, MSK, NAT Gateway, ElastiCache, or always-on multi-AZ resources without a documented requirement and cost estimate.
+- Pin provider/module versions according to repository policy.
+- Keep state remote, encrypted, locked, and separate by environment.
+- Never commit secrets or sensitive tfvars.
+- IAM must use least privilege; avoid wildcard actions/resources unless justified.
+- Encrypt data at rest and in transit.
+- Add log retention and cost tags.
+- Expose outputs deliberately; mark sensitive outputs.
+- Docker images should use multi-stage builds, non-root runtime users, minimal bases, health checks, and pinned major versions.
+- Run format, validate, and configured static/security checks.
+- For changes that may increase monthly cost, include a brief cost-impact note.

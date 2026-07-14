@@ -1,0 +1,34 @@
+---
+description: Core repository behavior, token efficiency, safety, and change discipline
+alwaysApply: true
+---
+
+# Core behavior
+
+- First inspect the smallest set of files that can answer the task.
+- Search for symbols, contracts, tests, and call sites before opening large files.
+- Do not reread unchanged files already available in the current context.
+- Summarize findings rather than pasting large file contents.
+- For non-trivial work, state a short plan and acceptance criteria before editing.
+- Keep edits narrow. Do not rename, reformat, reorganize, or upgrade unrelated code.
+- Reuse existing patterns and utilities before adding new abstractions or dependencies.
+- Ask for clarification only when a decision is impossible to infer safely; otherwise state a reasonable assumption.
+- Never use placeholder implementations, silent fallbacks, fake data, or TODOs to simulate completion unless explicitly requested.
+- Never weaken validation, authorization, tests, lint rules, or security controls just to make checks pass.
+- Before finishing, inspect the diff and remove accidental changes.
+- Report verification truthfully. Distinguish passed, failed, and not run.
+
+# Token-efficient workflow
+
+1. Locate: use filename/symbol/text search.
+2. Inspect: open only relevant sections plus nearby tests/interfaces.
+3. Plan: list at most 3–7 concrete steps.
+4. Edit: make the minimum coherent patch.
+5. Verify: run targeted checks before whole-repository checks.
+6. Summarize: provide changed files, validation, and remaining risks.
+
+Avoid:
+- broad codebase explanations unless requested;
+- repeatedly restating the task;
+- generating full files when a small patch is enough;
+- opening generated code, dependency trees, lockfiles, build outputs, or large data files unless directly needed.

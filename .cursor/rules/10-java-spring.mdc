@@ -1,0 +1,25 @@
+---
+description: Java and Spring Boot conventions
+globs:
+  - "**/*.java"
+  - "**/pom.xml"
+  - "**/*.gradle"
+  - "**/*.gradle.kts"
+alwaysApply: false
+---
+
+# Java / Spring Boot
+
+- Follow the repository's Java version and build tool.
+- Prefer constructor injection.
+- Keep controllers thin; place business rules in application/domain services.
+- Do not expose persistence entities directly through APIs.
+- Use records for immutable DTOs when supported.
+- Validate request DTOs at boundaries and domain invariants in the domain layer.
+- Use `BigDecimal` for money and make rounding mode explicit.
+- Map expected failures to stable problem details/error codes.
+- Transactions must be explicit around consistency boundaries.
+- Avoid broad `catch (Exception)` and never swallow exceptions.
+- Add unit tests for domain logic and focused integration tests for persistence/API behavior.
+- Prefer Testcontainers for real database integration where already adopted.
+- Avoid adding Lombok unless already standardized by the repository.

@@ -1,0 +1,57 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/secrets/**
+**/*secret*.json
+**/*credentials*.json
+.aws/
+.terraform/
+
+# Dependencies and generated output
+node_modules/
+.next/
+dist/
+build/
+target/
+out/
+coverage/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.gradle/
+.idea/
+.vscode/
+*.class
+*.jar
+*.war
+*.log
+
+# Terraform/provider and state
+**/.terraform/**
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Large or irrelevant data
+data/raw/
+uploads/
+tmp/
+temp/
+*.csv
+*.parquet
+*.sqlite
+*.db
+*.zip
+*.tar
+*.gz
+
+# Git internals
+.git/
