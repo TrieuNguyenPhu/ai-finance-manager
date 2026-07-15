@@ -1,28 +1,24 @@
 # AGENTS.md
 
 ## Mission
-Build a secure, maintainable, cost-aware personal finance platform using microservices.
+Build **ai-finance-manager** — a secure, cost-aware personal finance website with microservices (Java + Go + Python + Next.js). See `.cursor/context/*` and `docs/adr/0004-full-services-naming.md`.
 
 ## Working agreement
-1. Read `.cursor/context/project.md`, `.cursor/context/architecture.md`, and the relevant scoped rules before editing.
-2. Inspect existing code and tests before proposing changes.
-3. For tasks larger than a small local edit, create a concise plan first.
-4. Change only files required for the task. Do not opportunistically refactor unrelated code.
-5. Never invent APIs, environment variables, database columns, events, or infrastructure resources. Verify them in the repository.
-6. Never place secrets, credentials, tokens, account numbers, or real personal financial data in source code, logs, fixtures, prompts, or commits.
-7. Run the smallest relevant validation first, then broader validation when justified.
-8. Report:
-   - files changed;
-   - commands/tests run;
-   - assumptions;
-   - unresolved risks.
+1. Read `.cursor/context/project.md`, `.cursor/context/architecture.md`, and scoped rules before editing.
+2. Inspect existing code/tests before changing.
+3. Plan first for multi-file work.
+4. Change only required files.
+5. Never invent APIs, env vars, columns, events, or infra — verify in repo.
+6. Never place secrets or real financial PII in code/logs/commits.
+7. Smallest relevant validation first.
+8. Report files changed, tests run, assumptions, risks.
 9. Do not claim success when tests were not run or failed.
-10. Prefer simple, explicit code over speculative abstractions.
+10. Prefer simple explicit code.
 
-## Definition of done
-- Acceptance criteria are satisfied.
-- Relevant tests pass.
-- Error paths and validation are covered.
-- API/schema/event changes are documented.
-- No secrets or sensitive financial data are exposed.
-- The change is backward compatible unless the task explicitly approves a breaking change.
+## Architecture reminders
+- Product name: **ai-finance-manager** (folders `services/*-service`).
+- Browser → **gateway-service** only (BFF). Domain logic in other `*-service` modules.
+- `transaction-service` owns the ledger; AI never posts entries.
+- Confirm-before-save for NL drafts.
+- Integer minor units + currency; JWT `sub` authorization.
+- Java on Lambda + SnapStart (ADR 0004).
