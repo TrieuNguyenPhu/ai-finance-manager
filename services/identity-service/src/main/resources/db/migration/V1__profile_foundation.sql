@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS profiles (
+    user_id VARCHAR(128) PRIMARY KEY,
+    display_name VARCHAR(200),
+    preferred_currency CHAR(3) NOT NULL DEFAULT 'VND',
+    locale VARCHAR(32) NOT NULL DEFAULT 'en-US',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
