@@ -1,0 +1,13 @@
+---
+description: Git workflow — every change is committed on a branch and pushed
+alwaysApply: true
+---
+
+# Git workflow
+
+- Every code change must end in a commit and a push. Never leave finished work uncommitted in the working tree.
+- Never commit directly on `main`. Create a branch first: `feat/<scope>`, `fix/<scope>`, `chore/<scope>`, or `docs/<scope>`.
+- Use Conventional Commits scoped by service or area, matching repo history, e.g. `feat(transaction-service): add ledger reversal endpoint`.
+- Group changes into logical commits (one concern per commit); do not dump the whole working tree into one commit.
+- After pushing the branch, merge it into `main` with a merge commit (`--no-ff`, consistent with existing history) and push `main`.
+- Before committing: review the diff, drop accidental changes, and never commit secrets, real `.env` files, or personal financial data.
