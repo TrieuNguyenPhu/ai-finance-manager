@@ -5,7 +5,11 @@ Natural-language drafts, categorization, narrative insights for **ai-finance-man
 
 ## Providers
 
-1. Rules → 2. Gemini Flash → 3. Groq fallback
+- `AI_PROVIDER=groq` + `GROQ_API_KEY` → Groq LLM (`GROQ_MODEL`, default `llama-3.3-70b-versatile`), falls back to rules on any error.
+- `AI_PROVIDER=rules` (default) → deterministic parser, no network.
+- Gemini reserved for later.
+
+Configure via env vars or a local `.env` in this folder (gitignored).
 
 ## Requirements
 
