@@ -27,6 +27,12 @@ uv run pytest
 
 Health: `GET http://127.0.0.1:8000/health`
 
+## Edge protections
+
+- JWT (HS256 local stub) with `exp`/`iat` required; dev tokens via `POST /api/v1/auth/dev-token` when `AUTH_DEV_MODE=true`.
+- Security headers, per-IP rate limit (`RATE_LIMIT_PER_MINUTE`), request-size limit (`MAX_REQUEST_BODY_BYTES`).
+- Shared pooled HTTP client with timeouts; upstream errors return generic 502.
+
 ## Upstream ports (local)
 
 | Service | URL |
@@ -35,4 +41,5 @@ Health: `GET http://127.0.0.1:8000/health`
 | transaction-service | http://127.0.0.1:8081 |
 | budget-service | http://127.0.0.1:8082 |
 | analytics-service | http://127.0.0.1:8083 |
+| notification-service | http://127.0.0.1:8084 |
 | ai-service | http://127.0.0.1:8001 |
