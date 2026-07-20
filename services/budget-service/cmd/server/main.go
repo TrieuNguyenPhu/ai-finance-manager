@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/ai-finance-manager/budget-service/internal/budget"
 	"github.com/ai-finance-manager/budget-service/internal/db"
+	"github.com/ai-finance-manager/budget-service/internal/events"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,11 +32,29 @@ func main() {
 	svc := budget.NewService(sqlDB)
 	addr := envOr("BUDGET_ADDR", ":8082")
 	internalToken := envOr("INTERNAL_EVENTS_TOKEN", "local-internal-events-token")
+	if envBool("SQS_ENABLED") {
+		consumer, err := events.NewConsumer(ctx,
+			envOr("BUDGET_QUEUE_URL", "http://127.0.0.1:4566/000000000000/budget-events"),
+			os.Getenv("SQS_ENDPOINT_URL"), envOr("AWS_REGION", "ap-southeast-1"),
+			os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			int32(envInt("SQS_VISIBILITY_TIMEOUT_SECONDS", 60)), svc.HandleEvent)
+		if err != nil {
+			log.Fatalf("SQS consumer: %v", err)
+		}
+		go consumer.Run(ctx)
+	}
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "budget-service"})
+	})
+	r.GET("/ready", func(c *gin.Context) {
+		if err := sqlDB.PingContext(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "service": "budget-service"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ready", "service": "budget-service"})
 	})
 	r.GET("/budgets", func(c *gin.Context) {
 		userID := c.GetHeader("X-User-Id")
@@ -42,7 +62,12 @@ func main() {
 			c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED", "message": "X-User-Id required"})
 			return
 		}
-		items, err := svc.List(c.Request.Context(), userID)
+		limit, ok := boundedLimit(c.Query("limit"))
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_LIMIT", "message": "limit must be between 1 and 100"})
+			return
+		}
+		items, err := svc.List(c.Request.Context(), userID, limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL", "message": "list failed"})
 			return
@@ -129,4 +154,25 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envBool(key string) bool {
+	value, err := strconv.ParseBool(os.Getenv(key))
+	return err == nil && value
+}
+
+func envInt(key string, fallback int) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
+}
+
+func boundedLimit(raw string) (int, bool) {
+	if raw == "" {
+		return 50, true
+	}
+	limit, err := strconv.Atoi(raw)
+	return limit, err == nil && limit >= 1 && limit <= 100
 }

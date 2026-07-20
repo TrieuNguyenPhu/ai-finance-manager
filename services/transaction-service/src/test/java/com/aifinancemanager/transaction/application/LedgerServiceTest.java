@@ -87,7 +87,7 @@ class LedgerServiceTest {
             null,
             null,
             Instant.now(clock));
-    when(ledgerEntryRepository.findByIdAndUserId(entryId, "user-1"))
+    when(ledgerEntryRepository.findByIdAndUserIdForUpdate(entryId, "user-1"))
         .thenReturn(java.util.Optional.of(original));
     when(ledgerEntryRepository.existsByReversesEntryId(entryId)).thenReturn(true);
 

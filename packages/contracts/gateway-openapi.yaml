@@ -17,11 +17,17 @@
       }
     },
     "/api/v1/accounts": {
-      "get": { "summary": "List accounts" },
+      "get": {
+        "summary": "List accounts",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }]
+      },
       "post": { "summary": "Create account" }
     },
     "/api/v1/transactions": {
-      "get": { "summary": "List ledger entries" },
+      "get": {
+        "summary": "List ledger entries",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }]
+      },
       "post": {
         "summary": "Create ledger entry",
         "parameters": [

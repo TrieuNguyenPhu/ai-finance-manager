@@ -132,14 +132,15 @@ ai-finance-manager/
 | Go | `1.26+` |
 | Make | Optional, but recommended for root commands |
 
-### 1. Start PostgreSQL
+### 1. Start local dependencies
 
 ```bash
 make up
 ```
 
-The Compose setup creates one PostgreSQL database with a separate schema and
-database role for each domain service. Local defaults come from
+The Compose setup starts PostgreSQL, Redis and LocalStack SQS. PostgreSQL uses
+one database with a separate schema and database role for each domain service.
+Local defaults come from
 [`.env.example`](.env.example) and contain development-only values.
 
 If `make` is unavailable:
@@ -181,6 +182,14 @@ browser still communicates only with `gateway-service`.
 ```bash
 make down
 ```
+
+The default Redis URL is `redis://127.0.0.1:6379/0`; it is used by the gateway
+rate limiter with an in-process fallback when Redis is unavailable. LocalStack
+SQS is exposed at `http://127.0.0.1:4566`.
+
+The local HTTP outbox relay is the default. For the asynchronous SQS path,
+start LocalStack and set `OUTBOX_TRANSPORT=sqs`, `SQS_ENABLED=true`, and
+`SQS_ENDPOINT_URL=http://127.0.0.1:4566` for the transaction and Go services.
 
 ## AI providers
 
@@ -237,13 +246,14 @@ The local MVP currently includes:
 - Gateway routes with local JWT authentication and request hardening.
 - Ledger persistence, idempotency, reversals, and an outbox relay.
 - Budget, analytics, and notification event consumers.
+- LocalStack SQS/DLQ async transport (opt-in; HTTP outbox remains default).
 - Rules-based AI plus an optional Groq provider.
 - PostgreSQL Compose setup and initial Terraform modules.
 
 Still planned or incomplete:
 
 - Production Cognito integration.
-- SQS in place of the local HTTP outbox relay.
+- Opt-in SQS outbox relay and Go consumers; HTTP remains the local default.
 - Complete production Lambda/SnapStart packaging and deployment.
 - Gemini provider implementation.
 - Production observability and deployment hardening.

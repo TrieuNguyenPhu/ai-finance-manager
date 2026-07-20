@@ -2,12 +2,17 @@
 
 import time
 from collections import deque
-from typing import Awaitable, Callable
+import logging
+from typing import Awaitable, Callable, Literal
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from gateway.settings import settings
+
+logger = logging.getLogger(__name__)
 
 _SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -19,6 +24,49 @@ _SECURITY_HEADERS = {
 
 # client ip -> timestamps of recent requests (sliding 60s window)
 _windows: dict[str, deque[float]] = {}
+_redis: Redis | None = None
+
+
+async def startup_rate_limit() -> None:
+    global _redis
+    if not settings.redis_url:
+        return
+    client = Redis.from_url(settings.redis_url, decode_responses=True, max_connections=20)
+    try:
+        await client.ping()
+    except RedisError as exc:
+        await client.aclose()
+        logger.warning("Redis rate limiter unavailable; using local fallback: %s", exc)
+        return
+    _redis = client
+
+
+async def shutdown_rate_limit() -> None:
+    global _redis
+    if _redis is not None:
+        await _redis.aclose()
+        _redis = None
+
+
+async def _redis_rate_limit(client_ip: str) -> Response | Literal[True] | None:
+    if _redis is None:
+        return None
+    bucket = int(time.time() // 60)
+    key = f"afm:rate:{bucket}:{client_ip}"
+    try:
+        count = await _redis.incr(key)
+        if count == 1:
+            await _redis.expire(key, 120)
+    except RedisError as exc:
+        logger.warning("Redis rate limiter request failed; using local fallback: %s", exc)
+        return None
+    if count > settings.rate_limit_per_minute:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": {"code": "RATE_LIMITED", "message": "Too many requests"}},
+            headers={"Retry-After": "60"},
+        )
+    return True
 
 
 async def security_headers(
@@ -34,6 +82,12 @@ async def rate_limit(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     client_ip = request.client.host if request.client else "unknown"
+    redis_result = await _redis_rate_limit(client_ip)
+    if redis_result is not None:
+        if redis_result is True:
+            return await call_next(request)
+        return redis_result
+
     now = time.monotonic()
     window = _windows.setdefault(client_ip, deque())
     while window and now - window[0] > 60.0:

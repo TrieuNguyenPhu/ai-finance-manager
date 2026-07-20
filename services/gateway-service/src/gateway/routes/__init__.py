@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from gateway.auth import AuthUser, create_dev_token, require_user
@@ -48,8 +48,12 @@ async def put_profile(request: Request, user: AuthUser = Depends(require_user)) 
 
 
 @router.get("/api/v1/accounts")
-async def list_accounts(user: AuthUser = Depends(require_user)) -> Any:
-    return await upstream.request("GET", transaction_url(), "/accounts", user_id=user.user_id)
+async def list_accounts(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
+    return await upstream.request(
+        "GET", transaction_url(), "/accounts", user_id=user.user_id, params={"limit": str(limit)}
+    )
 
 
 @router.post("/api/v1/accounts")
@@ -61,8 +65,12 @@ async def create_account(request: Request, user: AuthUser = Depends(require_user
 
 
 @router.get("/api/v1/categories")
-async def list_categories(user: AuthUser = Depends(require_user)) -> Any:
-    return await upstream.request("GET", transaction_url(), "/categories", user_id=user.user_id)
+async def list_categories(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
+    return await upstream.request(
+        "GET", transaction_url(), "/categories", user_id=user.user_id, params={"limit": str(limit)}
+    )
 
 
 @router.post("/api/v1/categories")
@@ -74,9 +82,15 @@ async def create_category(request: Request, user: AuthUser = Depends(require_use
 
 
 @router.get("/api/v1/transactions")
-async def list_transactions(user: AuthUser = Depends(require_user)) -> Any:
+async def list_transactions(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
     return await upstream.request(
-        "GET", transaction_url(), "/ledger-entries", user_id=user.user_id
+        "GET",
+        transaction_url(),
+        "/ledger-entries",
+        user_id=user.user_id,
+        params={"limit": str(limit)},
     )
 
 
@@ -113,8 +127,12 @@ async def reverse_transaction(
 
 
 @router.get("/api/v1/budgets")
-async def list_budgets(user: AuthUser = Depends(require_user)) -> Any:
-    return await upstream.request("GET", budget_url(), "/budgets", user_id=user.user_id)
+async def list_budgets(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
+    return await upstream.request(
+        "GET", budget_url(), "/budgets", user_id=user.user_id, params={"limit": str(limit)}
+    )
 
 
 @router.post("/api/v1/budgets")
@@ -126,8 +144,14 @@ async def create_budget(request: Request, user: AuthUser = Depends(require_user)
 
 
 @router.get("/api/v1/dashboard")
-async def dashboard(user: AuthUser = Depends(require_user), yearMonth: str | None = None) -> Any:
-    params = {"yearMonth": yearMonth} if yearMonth else None
+async def dashboard(
+    user: AuthUser = Depends(require_user),
+    yearMonth: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> Any:
+    params = {"limit": str(limit)}
+    if yearMonth:
+        params["yearMonth"] = yearMonth
     return await upstream.request(
         "GET",
         analytics_url(),
@@ -138,9 +162,15 @@ async def dashboard(user: AuthUser = Depends(require_user), yearMonth: str | Non
 
 
 @router.get("/api/v1/notifications")
-async def list_notifications(user: AuthUser = Depends(require_user)) -> Any:
+async def list_notifications(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
     return await upstream.request(
-        "GET", notification_url(), "/notifications", user_id=user.user_id
+        "GET",
+        notification_url(),
+        "/notifications",
+        user_id=user.user_id,
+        params={"limit": str(limit)},
     )
 
 

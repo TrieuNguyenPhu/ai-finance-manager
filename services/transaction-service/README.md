@@ -1,7 +1,8 @@
 # transaction-service (Java / Spring Boot)
 
 Ledger **source of truth** for ai-finance-manager: accounts, categories, income/expense/transfers.
-Publishes domain events via transactional outbox (SQS later).
+Publishes domain events via a transactional outbox. HTTP fan-out is the default
+local transport; SQS publisher mode is available with `OUTBOX_TRANSPORT=sqs`.
 
 Money: integer minor units + ISO currency. Prefer reversal over destructive delete.
 

@@ -48,12 +48,12 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
 }
 
-func (s *Service) List(ctx context.Context, userID string) ([]Budget, error) {
+func (s *Service) List(ctx context.Context, userID string, limit int) ([]Budget, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id::text, user_id, category_name, year_month, limit_minor, currency,
 		       threshold_percent, spent_minor, created_at
 		FROM budgets WHERE user_id = $1
-		ORDER BY year_month DESC, category_name ASC`, userID)
+		ORDER BY year_month DESC, category_name ASC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -115,12 +115,12 @@ func (s *Service) Create(ctx context.Context, userID string, in CreateInput) (Bu
 }
 
 type ledgerPayload struct {
-	EventID    string `json:"eventId"`
-	UserID     string `json:"userId"`
-	EntryType  string `json:"entryType"`
-	AmountMinor int64 `json:"amountMinor"`
-	Currency   string `json:"currency"`
-	YearMonth  string `json:"yearMonth"`
+	EventID     string `json:"eventId"`
+	UserID      string `json:"userId"`
+	EntryType   string `json:"entryType"`
+	AmountMinor int64  `json:"amountMinor"`
+	Currency    string `json:"currency"`
+	YearMonth   string `json:"yearMonth"`
 }
 
 func (s *Service) HandleEvent(ctx context.Context, envelopeEventID, payloadJSON string) error {

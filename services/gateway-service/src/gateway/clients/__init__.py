@@ -26,6 +26,9 @@ class UpstreamClient:
             await self._client.aclose()
             self._client = None
 
+    def is_started(self) -> bool:
+        return self._client is not None
+
     async def request(
         self,
         method: str,

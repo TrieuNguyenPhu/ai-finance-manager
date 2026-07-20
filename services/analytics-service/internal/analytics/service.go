@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -25,7 +26,7 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
 }
 
-func (s *Service) GetDashboard(ctx context.Context, userID, yearMonth string) ([]Dashboard, error) {
+func (s *Service) GetDashboard(ctx context.Context, userID, yearMonth string, limit int) ([]Dashboard, error) {
 	query := `
 		SELECT year_month, currency, income_minor, expense_minor, updated_at
 		FROM monthly_totals WHERE user_id = $1`
@@ -34,7 +35,8 @@ func (s *Service) GetDashboard(ctx context.Context, userID, yearMonth string) ([
 		query += ` AND year_month = $2`
 		args = append(args, yearMonth)
 	}
-	query += ` ORDER BY year_month DESC, currency ASC`
+	query += ` ORDER BY year_month DESC, currency ASC LIMIT $` + strconv.Itoa(len(args)+1)
+	args = append(args, limit)
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

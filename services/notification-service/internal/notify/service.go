@@ -13,12 +13,12 @@ import (
 )
 
 type Notification struct {
-	ID        string  `json:"id"`
-	UserID    string  `json:"userId"`
-	Channel   string  `json:"channel"`
-	Subject   string  `json:"subject"`
-	Body      string  `json:"body"`
-	CreatedAt string  `json:"createdAt"`
+	ID          string  `json:"id"`
+	UserID      string  `json:"userId"`
+	Channel     string  `json:"channel"`
+	Subject     string  `json:"subject"`
+	Body        string  `json:"body"`
+	CreatedAt   string  `json:"createdAt"`
 	DeliveredAt *string `json:"deliveredAt"`
 }
 
@@ -30,10 +30,10 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
 }
 
-func (s *Service) List(ctx context.Context, userID string) ([]Notification, error) {
+func (s *Service) List(ctx context.Context, userID string, limit int) ([]Notification, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id::text, user_id, channel, subject, body, created_at, delivered_at
-		FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`, userID)
+		FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}

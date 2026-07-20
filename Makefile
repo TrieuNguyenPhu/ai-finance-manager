@@ -2,7 +2,7 @@
 .PHONY: help up down build lint test verify \
 	test-gateway-service test-ai-service test-budget-service test-analytics-service \
 	test-notification-service test-identity-service test-transaction-service \
-	build-web lint-web test-web lint-terraform
+	build-web lint-web test-web lint-terraform k6-smoke compose-config
 
 ROOT := $(CURDIR)/
 COMPOSE := docker compose -f "$(ROOT)infra/docker-compose.yml" --env-file "$(ROOT).env.example"
@@ -15,6 +15,7 @@ help:
 	@echo "  make test     Run available service tests"
 	@echo "  make build    Build web"
 	@echo "  make verify   test + build"
+	@echo "  make k6-smoke Run the local gateway k6 smoke test"
 
 up:
 	$(COMPOSE) up -d
@@ -22,6 +23,12 @@ up:
 
 down:
 	$(COMPOSE) down
+
+compose-config:
+	$(COMPOSE) config
+
+k6-smoke:
+	k6 run k6/smoke.js
 
 build: build-web
 

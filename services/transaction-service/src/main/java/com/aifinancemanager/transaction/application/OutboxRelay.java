@@ -3,17 +3,20 @@ package com.aifinancemanager.transaction.application;
 import com.aifinancemanager.transaction.config.OutboxProperties;
 import com.aifinancemanager.transaction.domain.OutboxMessage;
 import com.aifinancemanager.transaction.persistence.OutboxRepository;
+import java.net.http.HttpClient;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 @Component
@@ -22,6 +25,8 @@ import org.springframework.web.client.RestClient;
     name = "relay-enabled",
     havingValue = "true",
     matchIfMissing = true)
+@ConditionalOnProperty(
+    prefix = "afm.outbox", name = "transport", havingValue = "http", matchIfMissing = true)
 public class OutboxRelay {
 
   private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
@@ -35,13 +40,18 @@ public class OutboxRelay {
     this.outboxRepository = outboxRepository;
     this.properties = properties;
     this.clock = clock;
-    this.restClient = RestClient.create();
+    HttpClient httpClient =
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+    JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+    requestFactory.setReadTimeout(Duration.ofSeconds(10));
+    this.restClient = RestClient.builder().requestFactory(requestFactory).build();
   }
 
   @Scheduled(fixedDelayString = "${afm.outbox.poll-ms:2000}")
-  @Transactional
   public void publishPending() {
-    List<OutboxMessage> pending = outboxRepository.findUnpublished();
+    int batchSize = Math.min(1000, Math.max(1, properties.getBatchSize()));
+    List<OutboxMessage> pending =
+        outboxRepository.findUnpublished(PageRequest.of(0, batchSize));
     for (OutboxMessage message : pending) {
       boolean allDelivered =
           deliver(properties.getAnalyticsUrl() + "/internal/events", message)
@@ -51,6 +61,9 @@ public class OutboxRelay {
       // dedupe via processed_events, so re-delivery on the next poll is safe.
       if (allDelivered) {
         message.markPublished(Instant.now(clock));
+        // Keep network calls outside a database transaction. The repository
+        // save opens a short transaction for this single state transition.
+        outboxRepository.save(message);
       }
     }
   }

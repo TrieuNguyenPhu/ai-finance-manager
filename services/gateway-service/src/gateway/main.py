@@ -3,9 +3,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from gateway.clients import upstream
-from gateway.middleware import limit_body_size, rate_limit, security_headers
+from gateway.middleware import (
+    limit_body_size,
+    rate_limit,
+    security_headers,
+    shutdown_rate_limit,
+    startup_rate_limit,
+)
 from gateway.routes import router
 from gateway.settings import settings
 
@@ -13,7 +20,9 @@ from gateway.settings import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await upstream.startup()
+    await startup_rate_limit()
     yield
+    await shutdown_rate_limit()
     await upstream.shutdown()
 
 
@@ -46,3 +55,13 @@ app.include_router(router)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "gateway-service"}
+
+
+@app.get("/ready", response_model=None)
+def ready() -> dict[str, str] | JSONResponse:
+    if upstream.is_started():
+        return {"status": "ready", "service": "gateway-service"}
+    return JSONResponse(
+        status_code=503,
+        content={"status": "not_ready", "service": "gateway-service"},
+    )

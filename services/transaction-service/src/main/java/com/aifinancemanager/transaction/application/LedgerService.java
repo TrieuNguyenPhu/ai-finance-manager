@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -49,8 +50,9 @@ public class LedgerService {
   }
 
   @Transactional(readOnly = true)
-  public List<LedgerEntryResponse> list(String userId) {
-    return ledgerEntryRepository.findByUserIdOrderByOccurredAtDesc(userId).stream()
+  public List<LedgerEntryResponse> list(String userId, int limit) {
+    return ledgerEntryRepository
+        .findByUserIdOrderByOccurredAtDesc(userId, PageRequest.of(0, PageSize.normalize(limit))).stream()
         .map(LedgerEntryResponse::from)
         .toList();
   }
@@ -61,18 +63,21 @@ public class LedgerService {
       throw new DomainException(
           "USE_REVERSAL_ENDPOINT", "Use POST /ledger-entries/{id}/reversals", 400);
     }
-    Account account = accountService.requireOwned(request.accountId(), userId);
     Instant occurredAt = request.occurredAt() == null ? Instant.now(clock) : request.occurredAt();
     UUID categoryId = null;
     if (request.categoryId() != null) {
       categoryId = categoryService.requireOwned(request.categoryId(), userId).getId();
     }
 
+    Account account;
+    Account target = null;
     if (request.entryType() == EntryType.TRANSFER) {
       if (request.transferAccountId() == null) {
         throw new DomainException("TRANSFER_TARGET_REQUIRED", "transferAccountId is required", 400);
       }
-      Account target = accountService.requireOwned(request.transferAccountId(), userId);
+      Account[] locked = lockAccounts(userId, request.accountId(), request.transferAccountId());
+      account = locked[0].getId().equals(request.accountId()) ? locked[0] : locked[1];
+      target = locked[0].getId().equals(request.transferAccountId()) ? locked[0] : locked[1];
       if (!account.getCurrency().equals(target.getCurrency())) {
         throw new DomainException("CURRENCY_MISMATCH", "Transfer accounts must share currency", 400);
       }
@@ -81,11 +86,14 @@ public class LedgerService {
       }
       account.applyDelta(-request.amountMinor());
       target.applyDelta(request.amountMinor());
-    } else if (request.entryType() == EntryType.INCOME) {
+    } else {
+      account = accountService.requireOwned(request.accountId(), userId);
+    }
+    if (request.entryType() == EntryType.INCOME) {
       account.applyDelta(request.amountMinor());
     } else if (request.entryType() == EntryType.EXPENSE) {
       account.applyDelta(-request.amountMinor());
-    } else {
+    } else if (request.entryType() != EntryType.TRANSFER) {
       throw new DomainException("INVALID_ENTRY_TYPE", "Unsupported entry type", 400);
     }
 
@@ -112,7 +120,7 @@ public class LedgerService {
   public LedgerEntryResponse reverse(String userId, UUID entryId) {
     LedgerEntry original =
         ledgerEntryRepository
-            .findByIdAndUserId(entryId, userId)
+            .findByIdAndUserIdForUpdate(entryId, userId)
             .orElseThrow(() -> new DomainException("ENTRY_NOT_FOUND", "Ledger entry not found", 404));
     if (original.getEntryType() == EntryType.REVERSAL) {
       throw new DomainException("CANNOT_REVERSE_REVERSAL", "Cannot reverse a reversal", 400);
@@ -121,12 +129,18 @@ public class LedgerService {
       throw new DomainException("ALREADY_REVERSED", "Entry already reversed", 409);
     }
 
-    Account account = accountService.requireOwned(original.getAccountId(), userId);
+    Account account;
+    Account target = null;
     if (original.getEntryType() == EntryType.TRANSFER) {
-      Account target = accountService.requireOwned(original.getTransferAccountId(), userId);
+      Account[] locked = lockAccounts(userId, original.getAccountId(), original.getTransferAccountId());
+      account = locked[0].getId().equals(original.getAccountId()) ? locked[0] : locked[1];
+      target = locked[0].getId().equals(original.getTransferAccountId()) ? locked[0] : locked[1];
       account.applyDelta(original.getAmountMinor());
       target.applyDelta(-original.getAmountMinor());
-    } else if (original.getEntryType() == EntryType.INCOME) {
+    } else {
+      account = accountService.requireOwned(original.getAccountId(), userId);
+    }
+    if (original.getEntryType() == EntryType.INCOME) {
       account.applyDelta(-original.getAmountMinor());
     } else if (original.getEntryType() == EntryType.EXPENSE) {
       account.applyDelta(original.getAmountMinor());
@@ -149,6 +163,17 @@ public class LedgerService {
     LedgerEntry saved = ledgerEntryRepository.save(reversal);
     enqueuePostedEvent(saved);
     return LedgerEntryResponse.from(saved);
+  }
+
+  private Account[] lockAccounts(String userId, UUID firstId, UUID secondId) {
+    if (firstId.equals(secondId)) {
+      throw new DomainException("INVALID_TRANSFER", "Cannot transfer to the same account", 400);
+    }
+    UUID lower = firstId.compareTo(secondId) < 0 ? firstId : secondId;
+    UUID higher = firstId.compareTo(secondId) < 0 ? secondId : firstId;
+    Account first = accountService.requireOwned(lower, userId);
+    Account second = accountService.requireOwned(higher, userId);
+    return new Account[] {first, second};
   }
 
   private void enqueuePostedEvent(LedgerEntry entry) {

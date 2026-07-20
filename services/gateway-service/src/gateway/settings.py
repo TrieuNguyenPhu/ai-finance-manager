@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     analytics_base_url: str = "http://127.0.0.1:8083"
     ai_base_url: str = "http://127.0.0.1:8001"
     notification_base_url: str = "http://127.0.0.1:8084"
+    redis_url: str | None = "redis://127.0.0.1:6379/0"
 
     auth_dev_mode: bool = True
     auth_jwt_secret: str = "local-dev-only-change-me-32chars!!"
