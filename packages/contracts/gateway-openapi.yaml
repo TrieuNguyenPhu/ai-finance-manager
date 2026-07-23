@@ -2,41 +2,189 @@
   "openapi": "3.0.3",
   "info": {
     "title": "ai-finance-manager gateway API",
-    "version": "0.1.0",
-    "description": "Browser-facing BFF contract. Money fields use integer minor units."
+    "version": "0.2.0",
+    "description": "Browser-facing BFF contract. Ledger and budget write amounts use JSON-safe integer minor units plus currency; aggregate response encoding is still being hardened."
   },
+  "security": [
+    { "bearerAuth": [] }
+  ],
   "paths": {
     "/health": {
       "get": {
         "summary": "Liveness",
+        "security": [],
         "responses": {
-          "200": {
-            "description": "OK"
-          }
+          "200": { "description": "OK" }
         }
       }
     },
+    "/ready": {
+      "get": {
+        "summary": "Readiness",
+        "security": [],
+        "responses": {
+          "200": { "description": "Ready" },
+          "503": { "description": "Authentication or upstream client is not configured" }
+        }
+      }
+    },
+    "/api/v1/auth/dev-token": {
+      "post": {
+        "summary": "Issue a local-development token when explicitly enabled",
+        "security": [],
+        "responses": {
+          "200": { "description": "Development token" },
+          "403": { "description": "Development authentication is disabled" }
+        }
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "summary": "Get profile",
+        "responses": { "200": { "description": "Profile" } }
+      },
+      "put": {
+        "summary": "Update profile",
+        "responses": { "200": { "description": "Updated profile" } }
+      }
+    },
     "/api/v1/accounts": {
-      "get": { "summary": "List accounts" },
-      "post": { "summary": "Create account" }
+      "get": {
+        "summary": "List accounts",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Accounts" } }
+      },
+      "post": {
+        "summary": "Create account",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "responses": {
+          "201": { "description": "Account created or replayed" },
+          "409": { "description": "Idempotency key reused with a different request" }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "summary": "List categories",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Categories" } }
+      },
+      "post": {
+        "summary": "Create category",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "responses": {
+          "201": { "description": "Category created or replayed" },
+          "409": { "description": "Idempotency key reused with a different request" }
+        }
+      }
     },
     "/api/v1/transactions": {
-      "get": { "summary": "List ledger entries" },
+      "get": {
+        "summary": "List ledger entries",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Ledger entries" } }
+      },
       "post": {
         "summary": "Create ledger entry",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "responses": {
+          "201": { "description": "Ledger entry created or replayed" },
+          "409": { "description": "Idempotency key reused with a different request" }
+        }
+      }
+    },
+    "/api/v1/transactions/{entry_id}/reversals": {
+      "post": {
+        "summary": "Create a linked reversal",
         "parameters": [
           {
-            "name": "Idempotency-Key",
-            "in": "header",
+            "name": "entry_id",
+            "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "201": { "description": "Reversal created or replayed" },
+          "409": { "description": "Entry already reversed or idempotency key conflict" }
+        }
+      }
+    },
+    "/api/v1/budgets": {
+      "get": {
+        "summary": "List budgets",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Budgets" } }
+      },
+      "post": {
+        "summary": "Create budget",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "responses": {
+          "201": { "description": "Budget created or replayed" },
+          "409": { "description": "Budget or idempotency key conflict" }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "summary": "Get a monthly dashboard projection",
+        "parameters": [
+          { "$ref": "#/components/parameters/Limit" },
+          {
+            "name": "yearMonth",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+            }
           }
-        ]
+        ],
+        "responses": { "200": { "description": "Dashboard projection" } }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "summary": "List notifications",
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Notifications" } }
       }
     },
     "/api/v1/ai/drafts": {
       "post": {
-        "summary": "Create AI draft (confirm-before-save; never posts ledger)"
+        "summary": "Create an editable AI draft; this endpoint never posts to the ledger",
+        "responses": { "200": { "description": "Unrecorded draft" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
       }
     }
   }

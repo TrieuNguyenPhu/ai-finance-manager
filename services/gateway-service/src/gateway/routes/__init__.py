@@ -1,9 +1,9 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from gateway.auth import AuthUser, create_dev_token, require_user
+from gateway.auth import AuthUser, auth_is_configured, create_dev_token, require_user
 from gateway.clients import (
     ai_url,
     analytics_url,
@@ -29,6 +29,14 @@ def issue_dev_token(body: DevTokenRequest) -> dict[str, str]:
             status_code=403,
             detail={"code": "FORBIDDEN", "message": "Dev token disabled"},
         )
+    if not auth_is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "AUTH_NOT_CONFIGURED",
+                "message": "Development authentication is not configured",
+            },
+        )
     user_id = body.userId.strip()
     token = create_dev_token(user_id)
     return {"accessToken": token, "tokenType": "Bearer", "userId": user_id}
@@ -40,53 +48,81 @@ async def get_profile(user: AuthUser = Depends(require_user)) -> Any:
 
 
 @router.put("/api/v1/profile")
-async def put_profile(request: Request, user: AuthUser = Depends(require_user)) -> Any:
-    body = await request.json()
+async def put_profile(body: dict[str, Any], user: AuthUser = Depends(require_user)) -> Any:
     return await upstream.request(
         "PUT", identity_url(), "/profile", user_id=user.user_id, json_body=body
     )
 
 
 @router.get("/api/v1/accounts")
-async def list_accounts(user: AuthUser = Depends(require_user)) -> Any:
-    return await upstream.request("GET", transaction_url(), "/accounts", user_id=user.user_id)
+async def list_accounts(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
+    return await upstream.request(
+        "GET", transaction_url(), "/accounts", user_id=user.user_id, params={"limit": str(limit)}
+    )
 
 
 @router.post("/api/v1/accounts")
-async def create_account(request: Request, user: AuthUser = Depends(require_user)) -> Any:
-    body = await request.json()
+async def create_account(
+    body: dict[str, Any],
+    user: AuthUser = Depends(require_user),
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128),
+) -> Any:
     return await upstream.request(
-        "POST", transaction_url(), "/accounts", user_id=user.user_id, json_body=body
+        "POST",
+        transaction_url(),
+        "/accounts",
+        user_id=user.user_id,
+        json_body=body,
+        headers={"Idempotency-Key": idempotency_key},
     )
 
 
 @router.get("/api/v1/categories")
-async def list_categories(user: AuthUser = Depends(require_user)) -> Any:
-    return await upstream.request("GET", transaction_url(), "/categories", user_id=user.user_id)
+async def list_categories(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
+    return await upstream.request(
+        "GET", transaction_url(), "/categories", user_id=user.user_id, params={"limit": str(limit)}
+    )
 
 
 @router.post("/api/v1/categories")
-async def create_category(request: Request, user: AuthUser = Depends(require_user)) -> Any:
-    body = await request.json()
+async def create_category(
+    body: dict[str, Any],
+    user: AuthUser = Depends(require_user),
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128),
+) -> Any:
     return await upstream.request(
-        "POST", transaction_url(), "/categories", user_id=user.user_id, json_body=body
+        "POST",
+        transaction_url(),
+        "/categories",
+        user_id=user.user_id,
+        json_body=body,
+        headers={"Idempotency-Key": idempotency_key},
     )
 
 
 @router.get("/api/v1/transactions")
-async def list_transactions(user: AuthUser = Depends(require_user)) -> Any:
+async def list_transactions(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
     return await upstream.request(
-        "GET", transaction_url(), "/ledger-entries", user_id=user.user_id
+        "GET",
+        transaction_url(),
+        "/ledger-entries",
+        user_id=user.user_id,
+        params={"limit": str(limit)},
     )
 
 
 @router.post("/api/v1/transactions")
 async def create_transaction(
-    request: Request,
+    body: dict[str, Any],
     user: AuthUser = Depends(require_user),
-    idempotency_key: str = Header(alias="Idempotency-Key"),
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128),
 ) -> Any:
-    body = await request.json()
     return await upstream.request(
         "POST",
         transaction_url(),
@@ -101,7 +137,7 @@ async def create_transaction(
 async def reverse_transaction(
     entry_id: str,
     user: AuthUser = Depends(require_user),
-    idempotency_key: str = Header(alias="Idempotency-Key"),
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128),
 ) -> Any:
     return await upstream.request(
         "POST",
@@ -113,21 +149,39 @@ async def reverse_transaction(
 
 
 @router.get("/api/v1/budgets")
-async def list_budgets(user: AuthUser = Depends(require_user)) -> Any:
-    return await upstream.request("GET", budget_url(), "/budgets", user_id=user.user_id)
+async def list_budgets(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
+    return await upstream.request(
+        "GET", budget_url(), "/budgets", user_id=user.user_id, params={"limit": str(limit)}
+    )
 
 
 @router.post("/api/v1/budgets")
-async def create_budget(request: Request, user: AuthUser = Depends(require_user)) -> Any:
-    body = await request.json()
+async def create_budget(
+    body: dict[str, Any],
+    user: AuthUser = Depends(require_user),
+    idempotency_key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128),
+) -> Any:
     return await upstream.request(
-        "POST", budget_url(), "/budgets", user_id=user.user_id, json_body=body
+        "POST",
+        budget_url(),
+        "/budgets",
+        user_id=user.user_id,
+        json_body=body,
+        headers={"Idempotency-Key": idempotency_key},
     )
 
 
 @router.get("/api/v1/dashboard")
-async def dashboard(user: AuthUser = Depends(require_user), yearMonth: str | None = None) -> Any:
-    params = {"yearMonth": yearMonth} if yearMonth else None
+async def dashboard(
+    user: AuthUser = Depends(require_user),
+    yearMonth: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> Any:
+    params = {"limit": str(limit)}
+    if yearMonth:
+        params["yearMonth"] = yearMonth
     return await upstream.request(
         "GET",
         analytics_url(),
@@ -138,15 +192,18 @@ async def dashboard(user: AuthUser = Depends(require_user), yearMonth: str | Non
 
 
 @router.get("/api/v1/notifications")
-async def list_notifications(user: AuthUser = Depends(require_user)) -> Any:
+async def list_notifications(
+    user: AuthUser = Depends(require_user), limit: int = Query(default=50, ge=1, le=100)
+) -> Any:
     return await upstream.request(
-        "GET", notification_url(), "/notifications", user_id=user.user_id
+        "GET",
+        notification_url(),
+        "/notifications",
+        user_id=user.user_id,
+        params={"limit": str(limit)},
     )
 
 
 @router.post("/api/v1/ai/drafts")
-async def ai_draft(request: Request, user: AuthUser = Depends(require_user)) -> Any:
-    body = await request.json()
-    return await upstream.request(
-        "POST", ai_url(), "/drafts", user_id=user.user_id, json_body=body
-    )
+async def ai_draft(body: dict[str, Any], user: AuthUser = Depends(require_user)) -> Any:
+    return await upstream.request("POST", ai_url(), "/drafts", user_id=user.user_id, json_body=body)
