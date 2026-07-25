@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,8 +30,9 @@ public class LedgerController {
   }
 
   @GetMapping
-  public List<LedgerEntryResponse> list() {
-    return ledgerService.list(UserIdResolver.requireUserId());
+  public List<LedgerEntryResponse> list(
+      @RequestParam(defaultValue = "50") int limit) {
+    return ledgerService.list(UserIdResolver.requireUserId(), limit);
   }
 
   @PostMapping
@@ -40,6 +42,7 @@ public class LedgerController {
     String userId = UserIdResolver.requireUserId();
     return idempotencyService.execute(
         userId,
+        "ledger-entries.create",
         idempotencyKey,
         request,
         LedgerEntryResponse.class,
@@ -52,6 +55,7 @@ public class LedgerController {
     String userId = UserIdResolver.requireUserId();
     return idempotencyService.execute(
         userId,
+        "ledger-entries.reverse",
         idempotencyKey,
         id,
         LedgerEntryResponse.class,
