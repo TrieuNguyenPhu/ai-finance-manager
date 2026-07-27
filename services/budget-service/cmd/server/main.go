@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/ai-finance-manager/budget-service/internal/budget"
 	"github.com/ai-finance-manager/budget-service/internal/db"
+	"github.com/ai-finance-manager/budget-service/internal/events"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,13 +30,31 @@ func main() {
 	defer sqlDB.Close()
 
 	svc := budget.NewService(sqlDB)
-	addr := envOr("BUDGET_ADDR", ":8082")
-	internalToken := envOr("INTERNAL_EVENTS_TOKEN", "local-internal-events-token")
+	addr := envOr("BUDGET_ADDR", "127.0.0.1:8082")
+	internalToken := os.Getenv("INTERNAL_EVENTS_TOKEN")
+	if envBool("SQS_ENABLED") {
+		consumer, err := events.NewConsumer(ctx,
+			envOr("BUDGET_QUEUE_URL", "http://127.0.0.1:4566/000000000000/budget-events"),
+			os.Getenv("SQS_ENDPOINT_URL"), envOr("AWS_REGION", "ap-southeast-1"),
+			os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			int32(envInt("SQS_VISIBILITY_TIMEOUT_SECONDS", 60)), svc.HandleEvent)
+		if err != nil {
+			log.Fatalf("SQS consumer: %v", err)
+		}
+		go consumer.Run(ctx)
+	}
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "budget-service"})
+	})
+	r.GET("/ready", func(c *gin.Context) {
+		if err := sqlDB.PingContext(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "service": "budget-service"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ready", "service": "budget-service"})
 	})
 	r.GET("/budgets", func(c *gin.Context) {
 		userID := c.GetHeader("X-User-Id")
@@ -42,7 +62,12 @@ func main() {
 			c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED", "message": "X-User-Id required"})
 			return
 		}
-		items, err := svc.List(c.Request.Context(), userID)
+		limit, ok := boundedLimit(c.Query("limit"))
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_LIMIT", "message": "limit must be between 1 and 100"})
+			return
+		}
+		items, err := svc.List(c.Request.Context(), userID, limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL", "message": "list failed"})
 			return
@@ -60,10 +85,24 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR", "message": "invalid body"})
 			return
 		}
-		created, err := svc.Create(c.Request.Context(), userID, in)
+		created, err := svc.Create(
+			c.Request.Context(),
+			userID,
+			c.GetHeader("Idempotency-Key"),
+			in,
+		)
 		if err != nil {
 			if errors.Is(err, budget.ErrValidation) {
 				c.JSON(http.StatusBadRequest, gin.H{"code": "VALIDATION_ERROR", "message": err.Error()})
+				return
+			}
+			if errors.Is(err, budget.ErrConflict) {
+				c.JSON(http.StatusConflict, gin.H{"code": "BUDGET_EXISTS", "message": err.Error()})
+				return
+			}
+			if errors.Is(err, budget.ErrIdempotencyReuse) {
+				c.JSON(http.StatusConflict,
+					gin.H{"code": "IDEMPOTENCY_KEY_REUSE", "message": err.Error()})
 				return
 			}
 			// Never leak database internals to clients.
@@ -114,6 +153,14 @@ func main() {
 // transaction-service (outbox relay) should reach /internal/events.
 func requireInternalToken(token string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable,
+				gin.H{
+					"code":    "INTERNAL_AUTH_NOT_CONFIGURED",
+					"message": "internal event authentication is not configured",
+				})
+			return
+		}
 		provided := c.GetHeader("X-Internal-Token")
 		if subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
 			c.AbortWithStatusJSON(http.StatusUnauthorized,
@@ -129,4 +176,25 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envBool(key string) bool {
+	value, err := strconv.ParseBool(os.Getenv(key))
+	return err == nil && value
+}
+
+func envInt(key string, fallback int) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
+}
+
+func boundedLimit(raw string) (int, bool) {
+	if raw == "" {
+		return 50, true
+	}
+	limit, err := strconv.Atoi(raw)
+	return limit, err == nil && limit >= 1 && limit <= 100
 }
