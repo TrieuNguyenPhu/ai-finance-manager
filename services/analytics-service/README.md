@@ -18,3 +18,8 @@ go run ./cmd/server
 ```
 
 Health: `GET http://127.0.0.1:8083/health`
+
+Ledger event payload v1 carries signed income and expense deltas. Analytics adds
+those deltas without clamping during writes, so duplicate delivery is handled by
+`processed_events` and a reversal produces the same final total whether it arrives
+before or after its original event.

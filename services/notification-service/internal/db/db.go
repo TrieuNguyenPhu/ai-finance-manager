@@ -6,6 +6,9 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -20,20 +23,105 @@ func Open(ctx context.Context) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	configurePool(db)
 	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping: %w", err)
 	}
-	body, err := migrations.ReadFile("migrations/001_notifications.sql")
-	if err != nil {
+	if err := applyMigrations(ctx, db); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("read migration: %w", err)
-	}
-	if _, err := db.ExecContext(ctx, string(body)); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
+		return nil, err
 	}
 	return db, nil
+}
+
+func applyMigrations(ctx context.Context, db *sql.DB) error {
+	entries, err := migrations.ReadDir("migrations")
+	if err != nil {
+		return fmt.Errorf("read migrations: %w", err)
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin migrations: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(
+		ctx,
+		`SELECT pg_advisory_xact_lock(hashtext(current_schema()), hashtext('afm_migrations'))`,
+	); err != nil {
+		return fmt.Errorf("lock migrations: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS afm_schema_migrations (
+			version VARCHAR(255) PRIMARY KEY,
+			applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+		)`); err != nil {
+		return fmt.Errorf("create migration history: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		var applied bool
+		if err := tx.QueryRowContext(
+			ctx,
+			`SELECT EXISTS (SELECT 1 FROM afm_schema_migrations WHERE version = $1)`,
+			entry.Name(),
+		).Scan(&applied); err != nil {
+			return fmt.Errorf("check migration %s: %w", entry.Name(), err)
+		}
+		if applied {
+			continue
+		}
+		body, err := migrations.ReadFile("migrations/" + entry.Name())
+		if err != nil {
+			return fmt.Errorf("read migration %s: %w", entry.Name(), err)
+		}
+		if _, err := tx.ExecContext(ctx, string(body)); err != nil {
+			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
+		}
+		if _, err := tx.ExecContext(
+			ctx,
+			`INSERT INTO afm_schema_migrations (version) VALUES ($1)`,
+			entry.Name(),
+		); err != nil {
+			return fmt.Errorf("record migration %s: %w", entry.Name(), err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit migrations: %w", err)
+	}
+	return nil
+}
+
+func configurePool(db *sql.DB) {
+	maxOpen := positiveIntEnv("DB_MAX_OPEN_CONNS", 2)
+	maxIdle := nonNegativeIntEnv("DB_MAX_IDLE_CONNS", 0)
+	if maxIdle > maxOpen {
+		maxIdle = maxOpen
+	}
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(maxIdle)
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+}
+
+func positiveIntEnv(key string, fallback int) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
+}
+
+func nonNegativeIntEnv(key string, fallback int) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || value < 0 {
+		return fallback
+	}
+	return value
 }
 
 func envOr(key, fallback string) string {
