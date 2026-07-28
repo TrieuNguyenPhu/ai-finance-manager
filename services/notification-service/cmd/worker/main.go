@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/ai-finance-manager/notification-service/internal/db"
+	"github.com/ai-finance-manager/notification-service/internal/events"
 	"github.com/ai-finance-manager/notification-service/internal/notify"
 	"github.com/gin-gonic/gin"
 )
@@ -27,12 +29,30 @@ func main() {
 	defer sqlDB.Close()
 
 	svc := notify.NewService(sqlDB)
-	addr := envOr("NOTIFICATION_ADDR", ":8084")
-	internalToken := envOr("INTERNAL_EVENTS_TOKEN", "local-internal-events-token")
+	addr := envOr("NOTIFICATION_ADDR", "127.0.0.1:8084")
+	internalToken := os.Getenv("INTERNAL_EVENTS_TOKEN")
+	if envBool("SQS_ENABLED") {
+		consumer, err := events.NewConsumer(ctx,
+			envOr("NOTIFICATION_QUEUE_URL", "http://127.0.0.1:4566/000000000000/notification-events"),
+			os.Getenv("SQS_ENDPOINT_URL"), envOr("AWS_REGION", "ap-southeast-1"),
+			os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			int32(envInt("SQS_VISIBILITY_TIMEOUT_SECONDS", 60)), svc.HandleEvent)
+		if err != nil {
+			log.Fatalf("SQS consumer: %v", err)
+		}
+		go consumer.Run(ctx)
+	}
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "notification-service"})
+	})
+	r.GET("/ready", func(c *gin.Context) {
+		if err := sqlDB.PingContext(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready", "service": "notification-service"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ready", "service": "notification-service"})
 	})
 	r.GET("/notifications", func(c *gin.Context) {
 		userID := c.GetHeader("X-User-Id")
@@ -40,7 +60,12 @@ func main() {
 			c.JSON(http.StatusUnauthorized, gin.H{"code": "UNAUTHORIZED", "message": "X-User-Id required"})
 			return
 		}
-		items, err := svc.List(c.Request.Context(), userID)
+		limit, ok := boundedLimit(c.Query("limit"))
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "INVALID_LIMIT", "message": "limit must be between 1 and 100"})
+			return
+		}
+		items, err := svc.List(c.Request.Context(), userID, limit)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"code": "INTERNAL", "message": "list failed"})
 			return
@@ -72,7 +97,7 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 	go func() {
-		log.Printf("notification-service listening on %s (in-app + internal events; SQS optional later)", addr)
+		log.Printf("notification-service listening on %s (in-app; HTTP or optional SQS ingestion)", addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}
@@ -89,6 +114,14 @@ func main() {
 // transaction-service (outbox relay) should reach /internal/events.
 func requireInternalToken(token string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable,
+				gin.H{
+					"code":    "INTERNAL_AUTH_NOT_CONFIGURED",
+					"message": "internal event authentication is not configured",
+				})
+			return
+		}
 		provided := c.GetHeader("X-Internal-Token")
 		if subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
 			c.AbortWithStatusJSON(http.StatusUnauthorized,
@@ -104,4 +137,25 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func envBool(key string) bool {
+	value, err := strconv.ParseBool(os.Getenv(key))
+	return err == nil && value
+}
+
+func envInt(key string, fallback int) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || value < 1 {
+		return fallback
+	}
+	return value
+}
+
+func boundedLimit(raw string) (int, bool) {
+	if raw == "" {
+		return 50, true
+	}
+	limit, err := strconv.Atoi(raw)
+	return limit, err == nil && limit >= 1 && limit <= 100
 }
