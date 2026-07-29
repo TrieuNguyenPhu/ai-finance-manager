@@ -38,3 +38,40 @@ def test_rules_draft_income_vietnamese() -> None:
     )
     assert draft.entryType == "INCOME"
     assert draft.amountMinor == 15_000_000
+
+
+def test_rules_normalizes_vietnamese_shorthand() -> None:
+    provider = RulesProvider()
+
+    thousands = asyncio.run(
+        provider.draft(DraftRequest(text="ăn trưa 45 ngàn", defaultCurrency="VND"))
+    )
+    millions = asyncio.run(
+        provider.draft(DraftRequest(text="nhận lương 15 triệu", defaultCurrency="VND"))
+    )
+
+    assert thousands.amountMinor == 45_000
+    assert millions.amountMinor == 15_000_000
+
+
+def test_rules_converts_usd_major_units_to_cents_exactly() -> None:
+    draft = asyncio.run(
+        RulesProvider().draft(DraftRequest(text="coffee $4.50", defaultCurrency="VND"))
+    )
+    assert draft.currency == "USD"
+    assert draft.amountMinor == 450
+
+
+def test_rules_rejects_fraction_beyond_currency_precision() -> None:
+    draft = asyncio.run(
+        RulesProvider().draft(DraftRequest(text="coffee $4.505", defaultCurrency="USD"))
+    )
+    assert draft.amountMinor == 0
+
+
+def test_rules_does_not_treat_sentence_punctuation_as_part_of_amount() -> None:
+    draft = asyncio.run(
+        RulesProvider().draft(DraftRequest(text="coffee $4.50.", defaultCurrency="VND"))
+    )
+    assert draft.currency == "USD"
+    assert draft.amountMinor == 450

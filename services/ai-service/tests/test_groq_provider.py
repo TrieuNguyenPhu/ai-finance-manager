@@ -35,7 +35,7 @@ def test_groq_sanitizes_model_output(monkeypatch: Any) -> None:
     async def fake(request: DraftRequest) -> dict[str, Any]:
         return {
             "entryType": "expense",
-            "amountMinor": 45000.0,
+            "amountMinor": 45000,
             "currency": "vnd",
             "memo": "coffee",
             "categoryHint": "Food",
@@ -49,6 +49,23 @@ def test_groq_sanitizes_model_output(monkeypatch: Any) -> None:
     assert draft.currency == "VND"
     assert draft.confidence <= 0.99
     assert draft.provenance == "groq:test-model"
+
+
+def test_groq_rejects_non_integer_minor_amount(monkeypatch: Any) -> None:
+    provider = _provider()
+
+    async def fake(request: DraftRequest) -> dict[str, Any]:
+        return {
+            "entryType": "EXPENSE",
+            "amountMinor": 45000.5,
+            "currency": "VND",
+            "confidence": True,
+        }
+
+    monkeypatch.setattr(provider, "_call_groq", fake)
+    draft = asyncio.run(provider.draft(DraftRequest(text="coffee", defaultCurrency="VND")))
+    assert draft.amountMinor == 0
+    assert draft.confidence == 0.5
 
 
 def test_groq_rejects_invalid_fields(monkeypatch: Any) -> None:
