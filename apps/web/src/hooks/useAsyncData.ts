@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ensureDevSession } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type AsyncState<T> = {
   data: T | null;
@@ -10,10 +9,11 @@ type AsyncState<T> = {
 };
 
 /**
- * Fetch-on-mount helper for client pages: bootstraps the dev session,
- * runs the loader, and exposes a `refresh` for after mutations.
+ * Fetch-on-mount helper that ignores stale responses and exposes a `refresh`
+ * for after mutations.
  */
 export function useAsyncData<T>(loader: () => Promise<T>) {
+  const requestId = useRef(0);
   const [state, setState] = useState<AsyncState<T>>({
     data: null,
     loading: true,
@@ -21,21 +21,29 @@ export function useAsyncData<T>(loader: () => Promise<T>) {
   });
 
   const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    setState((previous) => ({ ...previous, loading: true, error: null }));
     try {
-      await ensureDevSession();
       const data = await loader();
-      setState({ data, loading: false, error: null });
+      if (currentRequest === requestId.current) {
+        setState({ data, loading: false, error: null });
+      }
     } catch (err) {
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: err instanceof Error ? err.message : "Failed to load",
-      }));
+      if (currentRequest === requestId.current) {
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: err instanceof Error ? err.message : "Failed to load",
+        }));
+      }
     }
   }, [loader]);
 
   useEffect(() => {
     void refresh();
+    return () => {
+      requestId.current += 1;
+    };
   }, [refresh]);
 
   return { ...state, refresh };
