@@ -1,3 +1,14 @@
+terraform {
+  required_version = ">= 1.7.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+
 variable "name_prefix" {
   type = string
 }
@@ -48,6 +59,7 @@ resource "aws_db_instance" "main" {
   backup_retention_period    = 7
   deletion_protection        = true
   skip_final_snapshot        = false
+  final_snapshot_identifier  = "${var.name_prefix}-postgres-final"
   auto_minor_version_upgrade = true
   storage_encrypted          = true
   tags                       = var.tags

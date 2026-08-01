@@ -1,6 +1,27 @@
+terraform {
+  required_version = ">= 1.7.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+
 variable "name_prefix" {
   type        = string
   description = "Resource name prefix"
+}
+
+variable "callback_urls" {
+  type        = list(string)
+  description = "Explicit OAuth callback URLs for this environment"
+}
+
+variable "logout_urls" {
+  type        = list(string)
+  description = "Explicit post-logout URLs for this environment"
 }
 
 variable "tags" {
@@ -34,8 +55,8 @@ resource "aws_cognito_user_pool_client" "web" {
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["openid", "email", "profile"]
-  callback_urls                        = ["http://localhost:3000/auth/callback"]
-  logout_urls                          = ["http://localhost:3000/"]
+  callback_urls                        = var.callback_urls
+  logout_urls                          = var.logout_urls
   supported_identity_providers         = ["COGNITO"]
   explicit_auth_flows = [
     "ALLOW_USER_SRP_AUTH",
@@ -52,7 +73,7 @@ output "user_pool_client_id" {
 }
 
 output "issuer" {
-  value = "https://cognito-idp.${data.aws_region.current.id}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+  value = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
 }
 
 data "aws_region" "current" {}
