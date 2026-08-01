@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 from typing import Any
 
 import httpx
@@ -17,6 +19,10 @@ from ai.providers import AIProvider, DraftRequest, DraftResponse
 logger = logging.getLogger(__name__)
 
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+_MAX_SAFE_MINOR = 9_007_199_254_740_991
+_CATEGORY_HINTS = frozenset(
+    {"Food", "Transport", "Shopping", "Bills", "Salary", "Health", "Entertainment", "Other"}
+)
 
 _SYSTEM_PROMPT = (
     "You extract a personal-finance transaction draft from user text "
@@ -26,7 +32,8 @@ _SYSTEM_PROMPT = (
     '"categoryHint":"<one of Food, Transport, Shopping, Bills, Salary, Health, '
     'Entertainment, Other, or null>","confidence":<0.0-1.0>}\n'
     "amountMinor is the amount in minor units: VND has no minor unit so 45k VND = 45000; "
-    "USD uses cents so $4.50 = 450. Numbers with k/nghìn mean thousands. "
+    "USD uses cents so $4.50 = 450. Numbers with k/nghìn/ngàn mean thousands; "
+    "triệu/tr mean millions. "
     "If no amount is found use 0 and lower confidence. Never invent amounts."
 )
 
@@ -90,12 +97,13 @@ class GroqProvider(AIProvider):
             entry_type = "EXPENSE"
 
         amount_raw = payload.get("amountMinor", 0)
-        # Amounts must be integers in minor units; reject floats/strings the model may emit.
-        amount_minor = int(amount_raw) if isinstance(amount_raw, (int, float)) else 0
-        amount_minor = max(amount_minor, 0)
+        # bool is an int subclass in Python, so use an exact type check.
+        amount_minor = amount_raw if type(amount_raw) is int else 0
+        if amount_minor < 0 or amount_minor > _MAX_SAFE_MINOR:
+            amount_minor = 0
 
         currency = str(payload.get("currency") or request.defaultCurrency).upper()
-        if len(currency) != 3 or not currency.isalpha():
+        if re.fullmatch(r"[A-Z]{3}", currency) is None:
             currency = request.defaultCurrency.upper()
 
         memo = payload.get("memo")
@@ -103,10 +111,15 @@ class GroqProvider(AIProvider):
 
         category = payload.get("categoryHint")
         category = str(category)[:64] if category else None
+        if category not in _CATEGORY_HINTS:
+            category = None
 
         try:
-            confidence = float(payload.get("confidence", 0.5))
+            confidence_raw = payload.get("confidence", 0.5)
+            confidence = float(confidence_raw) if not isinstance(confidence_raw, bool) else 0.5
         except (TypeError, ValueError):
+            confidence = 0.5
+        if not math.isfinite(confidence):
             confidence = 0.5
         confidence = min(max(confidence, 0.0), 0.99)
 
