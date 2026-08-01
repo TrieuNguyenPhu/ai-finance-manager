@@ -79,7 +79,9 @@ infrastructure at the edge; `gateway-service` is the Backend for Frontend (BFF)
 that validates identity, composes responses, and hides internal services.
 
 The locked architecture decision is documented in
-[ADR 0004](docs/adr/0004-full-services-naming.md).
+[ADR 0004](docs/adr/0004-full-services-naming.md). The
+[modernization baseline](docs/architecture/modernization.md) distinguishes
+enforced guarantees from the remaining production release blockers.
 
 ## Technology map
 
@@ -132,20 +134,47 @@ ai-finance-manager/
 | Go | `1.26+` |
 | Make | Optional, but recommended for root commands |
 
-### 1. Start PostgreSQL
+### 1. Start local dependencies
+
+Create a private local environment file once:
+
+```bash
+cp .env.example .env
+```
+
+Review the development-only values before using them. The file is gitignored.
+Java and Go do not automatically read the root file, so import it into every
+terminal used to start a service. On PowerShell, run the supplied helper:
+
+```powershell
+.\scripts\Import-LocalEnv.ps1
+```
+
+On Bash:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+This step is required for local development authentication and the shared
+`INTERNAL_EVENTS_TOKEN`; the services deliberately fail closed when those
+values are absent.
 
 ```bash
 make up
 ```
 
-The Compose setup creates one PostgreSQL database with a separate schema and
-database role for each domain service. Local defaults come from
+The Compose setup starts PostgreSQL, Redis and LocalStack SQS. PostgreSQL uses
+one database with a separate schema and database role for each domain service.
+Local defaults come from
 [`.env.example`](.env.example) and contain development-only values.
 
 If `make` is unavailable:
 
 ```bash
-docker compose -f infra/docker-compose.yml --env-file .env.example up -d
+docker compose -f infra/docker-compose.yml --env-file .env up -d --wait
 ```
 
 ### 2. Start the backend services
@@ -173,14 +202,26 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). In local development,
-`AUTH_DEV_MODE` allows the gateway to issue a short-lived development JWT. The
-browser still communicates only with `gateway-service`.
+the explicit `AUTH_DEV_MODE=true` value allows the gateway to issue a
+short-lived development JWT. The browser still communicates only with
+`gateway-service`. A production web build must set both
+`NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_SITE_URL`; the latter is used for
+canonical Open Graph/Twitter image URLs.
 
 ### 4. Stop local infrastructure
 
 ```bash
 make down
 ```
+
+The local example enables Redis at `redis://127.0.0.1:6379/0`; it is used by the
+gateway rate limiter with a bounded in-process fallback. Redis is optional and
+is not part of the cost-first production baseline. LocalStack SQS is exposed at
+`http://127.0.0.1:4566`.
+
+The local HTTP outbox relay is the default. For the asynchronous SQS path,
+start LocalStack and set `OUTBOX_TRANSPORT=sqs`, `SQS_ENABLED=true`, and
+`SQS_ENDPOINT_URL=http://127.0.0.1:4566` for the transaction and Go services.
 
 ## AI providers
 
@@ -210,10 +251,10 @@ result remains a draft that must be confirmed before it reaches the ledger.
 Canonical root commands:
 
 ```bash
-make test      # Run all backend service test suites
-make lint      # Lint and type-check the web app
+make test      # Run backend and web test suites
+make lint      # Run web, Python, and Go quality gates
 make build     # Create the production web build
-make verify    # Run backend tests and build the web app
+make verify    # Run lint, all tests, and the production web build
 ```
 
 Useful targeted commands:
@@ -226,7 +267,9 @@ make test-analytics-service
 make test-notification-service
 make test-identity-service
 make test-transaction-service
+make lint-contracts
 make lint-terraform
+make compose-config
 ```
 
 ## Project status
@@ -234,19 +277,24 @@ make lint-terraform
 The local MVP currently includes:
 
 - Dashboard, accounts, categories, transactions, budgets, AI drafts, and profile UI.
-- Gateway routes with local JWT authentication and request hardening.
+- Gateway routes with fail-closed local JWT or Cognito access-token verification.
 - Ledger persistence, idempotency, reversals, and an outbox relay.
 - Budget, analytics, and notification event consumers.
+- LocalStack SQS/DLQ async transport (opt-in; HTTP outbox remains default).
 - Rules-based AI plus an optional Groq provider.
 - PostgreSQL Compose setup and initial Terraform modules.
+- A versioned ledger-impact contract with order-independent read-model deltas.
 
 Still planned or incomplete:
 
-- Production Cognito integration.
-- SQS in place of the local HTTP outbox relay.
-- Complete production Lambda/SnapStart packaging and deployment.
+- Cognito hosted-login PKCE callback, refresh, and logout handling in the web app.
+- Lambda request/queue adapters and complete Java SnapStart packaging.
+- Production Terraform wiring for private networking, secrets, backups, DLQs,
+  alarms, and deployment artifacts.
+- PostgreSQL integration, browser E2E, accessibility, and measured load/cost
+  acceptance gates.
+- Remaining dependency inversion work documented in the modernization baseline.
 - Gemini provider implementation.
-- Production observability and deployment hardening.
 
 This repository is under active development and should not be treated as a
 production banking system or a source of professional financial advice.
@@ -268,7 +316,9 @@ also follow [`AGENTS.md`](AGENTS.md) before making changes.
 ## Documentation
 
 - [Architecture overview](docs/architecture/overview.md)
+- [Modernization baseline and release blockers](docs/architecture/modernization.md)
 - [UI architecture](docs/architecture/ui.md)
+- [Quiet Ledger design system](DESIGN.md)
 - [AI provider design](docs/architecture/ai-providers.md)
 - [ADR 0004 — full services and naming](docs/adr/0004-full-services-naming.md)
 - [Service documentation](services)
