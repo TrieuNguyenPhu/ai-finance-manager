@@ -2,7 +2,10 @@
 
 Canonical: [ADR 0004](../adr/0004-full-services-naming.md).
 
-## Runtime diagram
+Implementation status and remaining release blockers:
+[modernization baseline](./modernization.md).
+
+## Target runtime diagram
 
 ```text
 Browser → apps/web
@@ -18,6 +21,10 @@ Browser → apps/web
         └── notification-service (Go) ◀── SQS
 ```
 
+Local development currently uses the transaction outbox's HTTP relay by
+default; SQS consumers are opt-in. Lambda adapters and production wiring remain
+release blockers in the modernization baseline.
+
 ## gateway-service
 BFF only: JWT, composition, hide internals. No owning schema. Domain DBs stay per service.
 
@@ -30,5 +37,5 @@ BFF only: JWT, composition, hide internals. No owning schema. Domain DBs stay pe
 | `analytics` | analytics-service |
 | `notification` | notification-service |
 
-## AWS
+## AWS target
 Java → Lambda + SnapStart. Go/Python → Lambda. Web → Amplify or S3+CloudFront. One RDS. Cognito. SQS. SES. SSM.

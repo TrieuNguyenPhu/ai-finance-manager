@@ -1,0 +1,24 @@
+name: k6 smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Disposable gateway URL to test
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Run gateway smoke test
+        env:
+          BASE_URL: ${{ inputs.base_url || vars.K6_BASE_URL }}
+        run: k6 run k6/smoke.js
