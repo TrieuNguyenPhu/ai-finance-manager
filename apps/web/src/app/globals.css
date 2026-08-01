@@ -2,42 +2,63 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Quiet Ledger · warm paper, green-tinted neutrals, one restrained brand anchor. */
 :root {
-  --background: #f6f5f2;
-  --surface: #ffffff;
-  --surface-2: #f1efeb;
-  --border: #e4e1da;
-  --foreground: #1a1815;
-  --muted: #77716a;
-  --accent: #0d9488;
-  --accent-strong: #0f766e;
-  --accent-soft: #ccfbf1;
-  --accent-foreground: #ffffff;
-  --positive: #059669;
-  --negative: #dc2626;
-  --warning: #d97706;
+  color-scheme: light;
+  --background: #f4f0e7;
+  --surface: #fcfaf5;
+  --surface-2: #eae4d8;
+  --surface-inverse: #192a23;
+  --surface-inverse-foreground: #f7f2e8;
+  --border: #d7cfc1;
+  --foreground: #1c2823;
+  --muted: #5b665e;
+  --accent: #26745b;
+  --accent-strong: #155843;
+  --accent-soft: #d9ebe2;
+  --accent-foreground: #fbfdf9;
+  --positive: #237553;
+  --negative: #b44740;
+  --warning: #98600d;
+  --focus: #26745b;
+  --inverse-accent: #8fd5b7;
+  --inverse-positive: #81caa4;
+  --inverse-negative: #ff9a8d;
+  --shadow-soft: 0 1px 2px rgb(25 42 35 / 0.06), 0 8px 24px rgb(25 42 35 / 0.04);
+  --shadow-raised: 0 18px 50px rgb(25 42 35 / 0.1);
 }
 
 [data-theme="dark"] {
-  --background: #0e0d0b;
-  --surface: #171512;
-  --surface-2: #1f1d19;
-  --border: #2b2823;
-  --foreground: #f1efec;
-  --muted: #9c968e;
-  --accent: #2dd4bf;
-  --accent-strong: #14b8a6;
-  --accent-soft: #123a35;
-  --accent-foreground: #06211e;
-  --positive: #34d399;
-  --negative: #f87171;
-  --warning: #fbbf24;
+  color-scheme: dark;
+  --background: #101713;
+  --surface: #18211c;
+  --surface-2: #222e27;
+  --surface-inverse: #eee9de;
+  --surface-inverse-foreground: #17231d;
+  --border: #35423a;
+  --foreground: #f2ede3;
+  --muted: #aeb7af;
+  --accent: #75c4a5;
+  --accent-strong: #8bd2b5;
+  --accent-soft: #213d31;
+  --accent-foreground: #10271f;
+  --positive: #77c7a0;
+  --negative: #ee8e84;
+  --warning: #e1b464;
+  --focus: #9bd9c1;
+  --inverse-accent: #155843;
+  --inverse-positive: #237553;
+  --inverse-negative: #a93f39;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.22), 0 10px 30px rgb(0 0 0 / 0.12);
+  --shadow-raised: 0 20px 55px rgb(0 0 0 / 0.28);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-surface-inverse-foreground: var(--surface-inverse-foreground);
   --color-border: var(--border);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
@@ -48,25 +69,31 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-warning: var(--warning);
+  --color-focus: var(--focus);
+  --color-inverse-accent: var(--inverse-accent);
+  --color-inverse-positive: var(--inverse-positive);
+  --color-inverse-negative: var(--inverse-negative);
 
   --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-newsreader);
   --font-mono: var(--font-geist-mono);
 
-  --animate-fade-up: fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-fade-in: fade-in 0.35s ease both;
-  --animate-scale-in: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-up: fade-up 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 0.24s ease-out both;
+  --animate-scale-in: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-shimmer: shimmer 1.6s linear infinite;
 
   @keyframes fade-up {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(6px);
     }
     to {
       opacity: 1;
       transform: translateY(0);
     }
   }
+
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -75,16 +102,18 @@
       opacity: 1;
     }
   }
+
   @keyframes scale-in {
     from {
       opacity: 0;
-      transform: scale(0.97);
+      transform: scale(0.985);
     }
     to {
       opacity: 1;
       transform: scale(1);
     }
   }
+
   @keyframes shimmer {
     from {
       background-position: 200% 0;
@@ -95,26 +124,76 @@
   }
 }
 
+html,
 body {
+  overflow-x: clip;
+}
+
+html {
+  background: var(--background);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
   transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+    background-color 180ms ease-out,
+    color 180ms ease-out;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.money-figure {
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.025em;
+}
+
+.skip-link {
+  position: fixed;
+  inset-block-start: 0.75rem;
+  inset-inline-start: 0.75rem;
+  z-index: 100;
+  translate: 0 -5rem;
+  border-radius: 0.5rem;
+  background: var(--surface-inverse);
+  color: var(--surface-inverse-foreground);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.skip-link:focus-visible {
+  translate: 0;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--accent-foreground);
+  background: var(--accent-soft);
+  color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {
+    animation-delay: 0ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
 }
