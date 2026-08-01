@@ -20,4 +20,6 @@ Health: `GET http://127.0.0.1:8080/health`
 
 ## AWS
 
-Lambda + SnapStart (same pattern as transaction-service).
+Target: Lambda + SnapStart per ADR 0004. The current module is a servlet
+application; its Lambda adapter, published artifact, and measured SnapStart
+configuration are not implemented yet.

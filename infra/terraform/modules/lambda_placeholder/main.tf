@@ -1,3 +1,14 @@
+terraform {
+  required_version = ">= 1.7.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+
 variable "function_name" {
   type = string
 }
@@ -36,6 +47,7 @@ resource "aws_lambda_function" "this" {
   handler       = var.handler
   runtime       = var.runtime
   filename      = var.filename
+  publish       = true
   timeout       = 30
   memory_size   = 512
   tags          = var.tags
@@ -54,4 +66,8 @@ output "function_name" {
 
 output "arn" {
   value = aws_lambda_function.this.arn
+}
+
+output "version" {
+  value = aws_lambda_function.this.version
 }
