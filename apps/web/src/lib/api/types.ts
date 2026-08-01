@@ -6,6 +6,13 @@ export type Account = {
   balanceMinor: number;
 };
 
+export type Category = {
+  id: string;
+  name: string;
+  kind: "INCOME" | "EXPENSE";
+  createdAt: string;
+};
+
 export type LedgerEntry = {
   id: string;
   accountId: string;
@@ -20,6 +27,7 @@ export type LedgerEntry = {
 
 export type Budget = {
   id: string;
+  categoryId: string | null;
   categoryName: string;
   yearMonth: string;
   limitMinor: number;
